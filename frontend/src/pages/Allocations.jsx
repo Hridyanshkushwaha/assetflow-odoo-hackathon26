@@ -13,7 +13,7 @@ export default function Allocations() {
   const [employees, setEmployees] = useState([]);
   const [loading, setLoading] = useState(true);
   const [form, setForm] = useState({ assetId: '', allocatedTo: '', expectedReturnDate: '' });
-  const [error, setError] = useState('');
+  const [conflict, setConflict] = useState(null);
 
   const load = async () => {
     setLoading(true);
@@ -41,19 +41,33 @@ export default function Allocations() {
 
   const handleAllocate = async (e) => {
     e.preventDefault();
-    setError('');
+    setConflict(null);
     try {
       await api.post('/allocations', { ...form, allocatedToType: 'User' });
       setForm({ assetId: '', allocatedTo: '', expectedReturnDate: '' });
       load();
     } catch (err) {
       const data = err.response?.data;
-      if (err.response?.status === 409) {
-        setError(`Asset already held by ${data.currentHolder?.name}. Use Transfer Request instead.`);
-      } else {
-        setError(data?.message || 'Allocation failed');
+      if (data?.code === 'ALLOCATION_CONFLICT') {
+        setConflict({
+          message: data.message,
+          holder: data.currentHolder,
+          allocationId: data.allocationId,
+          toHolder: form.allocatedTo,
+        });
       }
     }
+  };
+
+  const handleTransferRequest = async () => {
+    if (!conflict?.allocationId || !conflict?.toHolder) return;
+    await api.post('/allocations/transfer', {
+      allocationId: conflict.allocationId,
+      toHolder: conflict.toHolder,
+    });
+    setConflict(null);
+    setForm({ assetId: '', allocatedTo: '', expectedReturnDate: '' });
+    load();
   };
 
   const handleReturn = async (id) => {
@@ -76,7 +90,18 @@ export default function Allocations() {
       {canAllocate(user?.role) && (
         <form onSubmit={handleAllocate} className="mb-6 rounded-xl border bg-white p-6">
           <h2 className="mb-4 font-semibold">Allocate Asset</h2>
-          {error && <div className="mb-3 rounded-lg bg-red-50 p-3 text-sm text-red-700">{error}</div>}
+          {conflict && (
+            <div className="mb-3 rounded-lg border border-amber-200 bg-amber-50 p-4">
+              <p className="text-sm text-amber-900">{conflict.message}</p>
+              <button
+                type="button"
+                onClick={handleTransferRequest}
+                className="mt-2 rounded-lg bg-amber-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-amber-700"
+              >
+                Request Transfer Instead
+              </button>
+            </div>
+          )}
           <div className="grid gap-4 md:grid-cols-3">
             <select value={form.assetId} onChange={(e) => setForm({ ...form, assetId: e.target.value })} className="rounded-lg border px-3 py-2" required>
               <option value="">Select asset</option>
@@ -128,7 +153,7 @@ export default function Allocations() {
           {transfers.map((t) => (
             <li key={t._id} className="flex items-center justify-between rounded-lg bg-slate-50 p-4">
               <div>
-                <p className="font-medium">{t.asset?.assetTag} transfer request</p>
+                <p className="font-medium">{t.asset?.assetTag}: {t.fromHolder?.name} → {t.toHolder?.name}</p>
                 <p className="text-sm text-slate-500">Requested by {t.requestedBy?.name}</p>
               </div>
               <div className="flex items-center gap-2">

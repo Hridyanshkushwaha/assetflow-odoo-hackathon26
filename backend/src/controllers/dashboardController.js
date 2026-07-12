@@ -3,11 +3,12 @@ import Allocation from '../models/Allocation.js';
 import Booking from '../models/Booking.js';
 import MaintenanceRequest from '../models/MaintenanceRequest.js';
 import TransferRequest from '../models/TransferRequest.js';
-import { flagOverdueAllocations } from './allocationController.js';
+import User from '../models/User.js';
+import { runOverdueChecks } from '../utils/overdueChecker.js';
 
 export const getDashboard = async (req, res) => {
   try {
-    await flagOverdueAllocations();
+    await runOverdueChecks();
 
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -47,7 +48,6 @@ export const getDashboard = async (req, res) => {
         allocs.map(async (a) => {
           const obj = a.toObject();
           if (a.allocatedToType === 'User') {
-            const User = (await import('../models/User.js')).default;
             obj.holder = await User.findById(a.allocatedTo).select('name');
           }
           return obj;

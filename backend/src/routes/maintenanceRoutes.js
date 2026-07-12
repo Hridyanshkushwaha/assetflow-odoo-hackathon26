@@ -12,6 +12,6 @@ const router = Router();
 router.use(protect);
 router.get('/', getMaintenanceRequests);
 router.post('/', upload.single('photo'), createMaintenanceRequest);
-router.put('/:id/status', authorize('Admin', 'AssetManager'), updateMaintenanceStatus);
+router.put('/:id/status', authorize('AssetManager'), updateMaintenanceStatus);
 
 export default router;

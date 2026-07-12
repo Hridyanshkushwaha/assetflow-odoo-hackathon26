@@ -17,6 +17,7 @@ import auditRoutes from './routes/auditRoutes.js';
 import dashboardRoutes from './routes/dashboardRoutes.js';
 import reportRoutes from './routes/reportRoutes.js';
 import notificationRoutes from './routes/notificationRoutes.js';
+import { runOverdueChecks } from './utils/overdueChecker.js';
 
 dotenv.config();
 
@@ -62,7 +63,11 @@ const connectDB = async () => {
 
 connectDB()
   .then(() => {
-    app.listen(PORT, () => console.log(`AssetFlow API running on port ${PORT}`));
+    app.listen(PORT, () => {
+      console.log(`AssetFlow API running on port ${PORT}`);
+      runOverdueChecks().catch(console.error);
+      setInterval(() => runOverdueChecks().catch(console.error), 60 * 60 * 1000);
+    });
   })
   .catch((err) => {
     console.error('MongoDB connection error:', err.message);

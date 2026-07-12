@@ -1,5 +1,6 @@
 import jwt from 'jsonwebtoken';
 import User from '../models/User.js';
+import { ROLES } from '../constants/businessRules.js';
 import { logActivity } from '../utils/activityLogger.js';
 
 const signToken = (id) =>
@@ -7,6 +8,10 @@ const signToken = (id) =>
 
 export const signup = async (req, res) => {
   try {
+    if ('role' in req.body) {
+      return res.status(400).json({ message: 'Role cannot be set during signup' });
+    }
+
     const { name, email, password } = req.body;
     if (!name || !email || !password) {
       return res.status(400).json({ message: 'Name, email, and password are required' });
@@ -16,7 +21,7 @@ export const signup = async (req, res) => {
     if (exists) return res.status(400).json({ message: 'Email already registered' });
 
     const userCount = await User.countDocuments();
-    const role = userCount === 0 ? 'Admin' : 'Employee';
+    const role = userCount === 0 ? ROLES.ADMIN : ROLES.EMPLOYEE;
     const passwordHash = await User.hashPassword(password);
 
     const user = await User.create({ name, email, passwordHash, role });

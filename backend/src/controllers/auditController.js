@@ -2,6 +2,7 @@ import AuditCycle from '../models/AuditCycle.js';
 import AuditItem from '../models/AuditItem.js';
 import Asset from '../models/Asset.js';
 import Allocation from '../models/Allocation.js';
+import { ROLES, ERROR_CODES } from '../constants/businessRules.js';
 import { logActivity } from '../utils/activityLogger.js';
 import { createNotification } from '../utils/notifications.js';
 
@@ -48,6 +49,10 @@ export const createAuditCycle = async (req, res) => {
   try {
     const { name, scopeDepartment, scopeLocation, startDate, endDate, auditors } = req.body;
 
+    if (!auditors?.length) {
+      return res.status(400).json({ message: 'At least one auditor must be assigned' });
+    }
+
     const assetFilter = { status: { $nin: ['Disposed'] } };
     if (scopeLocation) assetFilter.location = new RegExp(scopeLocation, 'i');
 
@@ -74,7 +79,7 @@ export const createAuditCycle = async (req, res) => {
     });
 
     await AuditItem.insertMany(
-      assets.map((a) => ({ auditCycle: cycle._id, asset: a._id, result: 'Verified' }))
+      assets.map((a) => ({ auditCycle: cycle._id, asset: a._id }))
     );
 
     await logActivity(req.user._id, 'create_audit_cycle', 'AuditCycle', cycle._id);
@@ -87,8 +92,23 @@ export const createAuditCycle = async (req, res) => {
 export const verifyAuditItem = async (req, res) => {
   try {
     const cycle = await AuditCycle.findById(req.params.id);
-    if (!cycle || cycle.status === 'Closed') {
-      return res.status(400).json({ message: 'Audit cycle not available' });
+    if (!cycle) return res.status(404).json({ message: 'Audit cycle not found' });
+
+    if (cycle.status === 'Closed') {
+      return res.status(400).json({
+        code: ERROR_CODES.AUDIT_CYCLE_CLOSED,
+        message: 'Audit cycle is closed — no further edits allowed',
+      });
+    }
+
+    const isAuditor = cycle.auditors.some((a) => a.toString() === req.user._id.toString());
+    if (!isAuditor && req.user.role !== ROLES.ADMIN) {
+      return res.status(403).json({ message: 'Only assigned auditors can submit audit results' });
+    }
+
+    const validResults = ['Verified', 'Missing', 'Damaged'];
+    if (!validResults.includes(req.body.result)) {
+      return res.status(400).json({ message: 'Invalid audit result' });
     }
 
     const item = await AuditItem.findOneAndUpdate(
@@ -99,12 +119,14 @@ export const verifyAuditItem = async (req, res) => {
 
     if (!item) return res.status(404).json({ message: 'Audit item not found' });
 
-    if (['Missing', 'Damaged'].includes(req.body.result) && cycle.auditors?.[0]) {
-      await createNotification(
-        cycle.auditors[0],
-        'audit_discrepancy',
-        `Audit discrepancy flagged: ${req.body.result} — ${item.asset?.assetTag}`
-      );
+    if (['Missing', 'Damaged'].includes(req.body.result)) {
+      for (const auditorId of cycle.auditors) {
+        await createNotification(
+          auditorId,
+          'audit_discrepancy',
+          `Discrepancy flagged: ${req.body.result} — ${item.asset?.assetTag}`
+        );
+      }
     }
 
     res.json(item);
@@ -117,14 +139,23 @@ export const closeAuditCycle = async (req, res) => {
   try {
     const cycle = await AuditCycle.findById(req.params.id);
     if (!cycle) return res.status(404).json({ message: 'Audit cycle not found' });
-    if (cycle.status === 'Closed') return res.status(400).json({ message: 'Already closed' });
+    if (cycle.status === 'Closed') {
+      return res.status(400).json({
+        code: ERROR_CODES.AUDIT_CYCLE_CLOSED,
+        message: 'Audit cycle is already closed',
+      });
+    }
 
-    const items = await AuditItem.find({ auditCycle: cycle._id });
-    for (const item of items) {
+    const discrepancies = await AuditItem.find({
+      auditCycle: cycle._id,
+      result: { $in: ['Missing', 'Damaged'] },
+    }).populate('asset', 'name assetTag status location');
+
+    for (const item of discrepancies) {
       if (item.result === 'Missing') {
-        await Asset.findByIdAndUpdate(item.asset, { status: 'Lost' });
+        await Asset.findByIdAndUpdate(item.asset._id, { status: 'Lost' });
       } else if (item.result === 'Damaged') {
-        await Asset.findByIdAndUpdate(item.asset, { condition: 'Damaged' });
+        await Asset.findByIdAndUpdate(item.asset._id, { condition: 'Damaged' });
       }
     }
 
@@ -132,7 +163,16 @@ export const closeAuditCycle = async (req, res) => {
     await cycle.save();
 
     await logActivity(req.user._id, 'close_audit_cycle', 'AuditCycle', cycle._id);
-    res.json(cycle);
+
+    res.json({
+      cycle,
+      discrepancyReport: discrepancies,
+      summary: {
+        totalDiscrepancies: discrepancies.length,
+        missing: discrepancies.filter((d) => d.result === 'Missing').length,
+        damaged: discrepancies.filter((d) => d.result === 'Damaged').length,
+      },
+    });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }

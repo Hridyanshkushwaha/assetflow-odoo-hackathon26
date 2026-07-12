@@ -1,9 +1,9 @@
 import Booking from '../models/Booking.js';
 import Asset from '../models/Asset.js';
+import { ERROR_CODES } from '../constants/businessRules.js';
 import { logActivity } from '../utils/activityLogger.js';
 import { createNotification } from '../utils/notifications.js';
-
-const hasOverlap = (start1, end1, start2, end2) => start1 < end2 && end1 > start2;
+import { findOverlappingBooking } from '../utils/bookingOverlap.js';
 
 export const getBookings = async (req, res) => {
   try {
@@ -38,18 +38,13 @@ export const createBooking = async (req, res) => {
       return res.status(400).json({ message: 'Resource is not bookable' });
     }
 
-    const existing = await Booking.find({
-      resource: resourceId,
-      status: { $in: ['Upcoming', 'Ongoing'] },
-    });
-
-    for (const b of existing) {
-      if (hasOverlap(start, end, b.startTime, b.endTime)) {
-        return res.status(409).json({
-          message: 'Booking overlaps with an existing reservation',
-          conflictingBooking: { startTime: b.startTime, endTime: b.endTime },
-        });
-      }
+    const overlap = await findOverlappingBooking(resourceId, start, end);
+    if (overlap) {
+      return res.status(409).json({
+        code: ERROR_CODES.BOOKING_OVERLAP,
+        message: 'Booking overlaps with an existing reservation',
+        conflictingBooking: { startTime: overlap.startTime, endTime: overlap.endTime },
+      });
     }
 
     const booking = await Booking.create({
@@ -83,7 +78,16 @@ export const updateBooking = async (req, res) => {
     const booking = await Booking.findById(req.params.id);
     if (!booking) return res.status(404).json({ message: 'Booking not found' });
 
+    const isOwner = booking.bookedBy.toString() === req.user._id.toString();
+    const isManager = ['Admin', 'AssetManager', 'DepartmentHead'].includes(req.user.role);
+    if (!isOwner && !isManager) {
+      return res.status(403).json({ message: 'Not authorized to modify this booking' });
+    }
+
     if (req.body.status === 'Cancelled') {
+      if (booking.status === 'Completed') {
+        return res.status(400).json({ message: 'Cannot cancel a completed booking' });
+      }
       booking.status = 'Cancelled';
       await booking.save();
       await createNotification(booking.bookedBy, 'booking_cancelled', 'Your booking has been cancelled');
@@ -93,16 +97,12 @@ export const updateBooking = async (req, res) => {
     if (req.body.startTime && req.body.endTime) {
       const start = new Date(req.body.startTime);
       const end = new Date(req.body.endTime);
-      const existing = await Booking.find({
-        resource: booking.resource,
-        status: { $in: ['Upcoming', 'Ongoing'] },
-        _id: { $ne: booking._id },
-      });
-
-      for (const b of existing) {
-        if (hasOverlap(start, end, b.startTime, b.endTime)) {
-          return res.status(409).json({ message: 'Reschedule overlaps with existing booking' });
-        }
+      const overlap = await findOverlappingBooking(booking.resource, start, end, booking._id);
+      if (overlap) {
+        return res.status(409).json({
+          code: ERROR_CODES.BOOKING_OVERLAP,
+          message: 'Reschedule overlaps with existing booking',
+        });
       }
       booking.startTime = start;
       booking.endTime = end;

@@ -7,7 +7,6 @@ const auditItemSchema = new mongoose.Schema(
     result: {
       type: String,
       enum: ['Verified', 'Missing', 'Damaged'],
-      default: 'Verified',
     },
     notes: { type: String },
   },

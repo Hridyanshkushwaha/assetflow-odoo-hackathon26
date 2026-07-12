@@ -1,7 +1,17 @@
 import MaintenanceRequest from '../models/MaintenanceRequest.js';
 import Asset from '../models/Asset.js';
+import { ROLES, ERROR_CODES } from '../constants/businessRules.js';
 import { logActivity } from '../utils/activityLogger.js';
 import { createNotification } from '../utils/notifications.js';
+
+const VALID_TRANSITIONS = {
+  Pending: ['Approved', 'Rejected'],
+  Approved: ['TechnicianAssigned'],
+  TechnicianAssigned: ['InProgress'],
+  InProgress: ['Resolved'],
+  Rejected: [],
+  Resolved: [],
+};
 
 export const getMaintenanceRequests = async (req, res) => {
   try {
@@ -46,6 +56,20 @@ export const updateMaintenanceStatus = async (req, res) => {
     if (!request) return res.status(404).json({ message: 'Request not found' });
 
     const { status, technicianName, resolutionNotes } = req.body;
+    const allowedNext = VALID_TRANSITIONS[request.status] || [];
+
+    if (!allowedNext.includes(status)) {
+      return res.status(400).json({
+        code: ERROR_CODES.INVALID_STATUS_TRANSITION,
+        message: `Cannot transition from ${request.status} to ${status}`,
+        allowedTransitions: allowedNext,
+      });
+    }
+
+    if (['Approved', 'Rejected'].includes(status) && req.user.role !== ROLES.ASSET_MANAGER) {
+      return res.status(403).json({ message: 'Only Asset Manager can approve or reject maintenance requests' });
+    }
+
     request.status = status;
     request.approvedBy = req.user._id;
     if (technicianName) request.technicianName = technicianName;
@@ -75,7 +99,10 @@ export const updateMaintenanceStatus = async (req, res) => {
       );
     }
 
-    await asset.save();
+    if (['Approved', 'Resolved'].includes(status)) {
+      await asset.save();
+    }
+
     await request.save();
     await logActivity(req.user._id, 'update_maintenance', 'MaintenanceRequest', request._id);
 

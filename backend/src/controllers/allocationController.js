@@ -1,15 +1,14 @@
 import Allocation from '../models/Allocation.js';
 import TransferRequest from '../models/TransferRequest.js';
 import Asset from '../models/Asset.js';
-import User from '../models/User.js';
 import { logActivity } from '../utils/activityLogger.js';
 import { createNotification } from '../utils/notifications.js';
+import { rejectIfAlreadyAllocated, getActiveAllocation } from '../utils/allocationRules.js';
+import { resolveHolder } from '../utils/overdueChecker.js';
 
 const populateAllocatedTo = async (allocation) => {
   const doc = allocation.toObject ? allocation.toObject() : allocation;
-  if (doc.allocatedToType === 'User') {
-    doc.holder = await User.findById(doc.allocatedTo).select('name email');
-  }
+  doc.holder = await resolveHolder(doc);
   return doc;
 };
 
@@ -41,21 +40,8 @@ export const allocateAsset = async (req, res) => {
     const asset = await Asset.findById(assetId);
     if (!asset) return res.status(404).json({ message: 'Asset not found' });
 
-    if (asset.status === 'Allocated') {
-      const active = await Allocation.findOne({
-        asset: assetId,
-        status: { $in: ['Active', 'Overdue'] },
-      });
-      let holder = null;
-      if (active?.allocatedToType === 'User') {
-        holder = await User.findById(active.allocatedTo).select('name email');
-      }
-      return res.status(409).json({
-        message: 'Asset is already allocated',
-        currentHolder: holder,
-        allocationId: active?._id,
-      });
-    }
+    const conflict = await rejectIfAlreadyAllocated(res, assetId);
+    if (conflict) return;
 
     if (!['Available', 'Reserved'].includes(asset.status)) {
       return res.status(400).json({ message: `Cannot allocate asset with status: ${asset.status}` });
@@ -120,9 +106,24 @@ export const returnAsset = async (req, res) => {
 
 export const requestTransfer = async (req, res) => {
   try {
-    const { allocationId, toHolder, notes } = req.body;
+    const { allocationId, toHolder } = req.body;
+    if (!allocationId || !toHolder) {
+      return res.status(400).json({ message: 'allocationId and toHolder are required' });
+    }
+
     const allocation = await Allocation.findById(allocationId).populate('asset');
     if (!allocation) return res.status(404).json({ message: 'Allocation not found' });
+    if (!['Active', 'Overdue'].includes(allocation.status)) {
+      return res.status(400).json({ message: 'No active allocation to transfer' });
+    }
+
+    const pending = await TransferRequest.findOne({
+      asset: allocation.asset._id,
+      status: 'Requested',
+    });
+    if (pending) {
+      return res.status(409).json({ message: 'A transfer request is already pending for this asset' });
+    }
 
     const transfer = await TransferRequest.create({
       asset: allocation.asset._id,
@@ -159,28 +160,42 @@ export const approveTransfer = async (req, res) => {
   try {
     const transfer = await TransferRequest.findById(req.params.id).populate('asset');
     if (!transfer) return res.status(404).json({ message: 'Transfer not found' });
+    if (transfer.status !== 'Requested') {
+      return res.status(400).json({ message: 'Transfer is not in Requested status' });
+    }
 
     if (req.body.action === 'reject') {
       transfer.status = 'Rejected';
       transfer.approvedBy = req.user._id;
       await transfer.save();
+      await logActivity(req.user._id, 'reject_transfer', 'TransferRequest', transfer._id);
       return res.json(transfer);
     }
+
+    const oldAllocation = await getActiveAllocation(transfer.asset._id);
+    if (!oldAllocation) {
+      return res.status(400).json({ message: 'No active allocation found for this asset' });
+    }
+
+    oldAllocation.status = 'Returned';
+    oldAllocation.actualReturnDate = new Date();
+    oldAllocation.conditionCheckInNotes = 'Closed via approved transfer';
+    await oldAllocation.save();
+
+    const newAllocation = await Allocation.create({
+      asset: transfer.asset._id,
+      allocatedTo: transfer.toHolder,
+      allocatedToType: 'User',
+      allocatedBy: req.user._id,
+      status: 'Active',
+      expectedReturnDate: oldAllocation.expectedReturnDate,
+    });
+
+    await Asset.findByIdAndUpdate(transfer.asset._id, { status: 'Allocated' });
 
     transfer.status = 'Approved';
     transfer.approvedBy = req.user._id;
     await transfer.save();
-
-    const allocation = await Allocation.findOne({
-      asset: transfer.asset._id,
-      status: { $in: ['Active', 'Overdue'] },
-    });
-    if (allocation) {
-      allocation.allocatedTo = transfer.toHolder;
-      allocation.allocatedToType = 'User';
-      allocation.status = 'Active';
-      await allocation.save();
-    }
 
     await createNotification(
       transfer.toHolder,
@@ -189,27 +204,8 @@ export const approveTransfer = async (req, res) => {
     );
 
     await logActivity(req.user._id, 'approve_transfer', 'TransferRequest', transfer._id);
-    res.json(transfer);
+    res.json({ transfer, closedAllocation: oldAllocation, newAllocation });
   } catch (err) {
     res.status(500).json({ message: err.message });
-  }
-};
-
-export const flagOverdueAllocations = async () => {
-  const overdue = await Allocation.find({
-    status: 'Active',
-    expectedReturnDate: { $lt: new Date() },
-  }).populate('asset');
-
-  for (const alloc of overdue) {
-    alloc.status = 'Overdue';
-    await alloc.save();
-    if (alloc.allocatedToType === 'User') {
-      await createNotification(
-        alloc.allocatedTo,
-        'overdue_return',
-        `Overdue return: ${alloc.asset.assetTag} (${alloc.asset.name})`
-      );
-    }
   }
 };

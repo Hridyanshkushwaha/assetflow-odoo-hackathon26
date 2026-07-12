@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import api from '../services/api';
 import { useAuth } from '../context/AuthContext';
-import { canApproveMaintenance } from '../utils/roles';
+import { ROLES } from '../utils/roles';
 import StatusBadge from '../components/StatusBadge';
 import LoadingSpinner from '../components/LoadingSpinner';
 
@@ -11,6 +11,8 @@ export default function Maintenance() {
   const [assets, setAssets] = useState([]);
   const [loading, setLoading] = useState(true);
   const [form, setForm] = useState({ assetId: '', issueDescription: '', priority: 'Medium' });
+
+  const isAssetManager = user?.role === ROLES.ASSET_MANAGER;
 
   const load = async () => {
     setLoading(true);
@@ -34,11 +36,8 @@ export default function Maintenance() {
     load();
   };
 
-  const updateStatus = async (id, status) => {
-    await api.put(`/maintenance/${id}/status`, {
-      status,
-      technicianName: status === 'TechnicianAssigned' ? 'Tech Team' : undefined,
-    });
+  const updateStatus = async (id, status, extra = {}) => {
+    await api.put(`/maintenance/${id}/status`, { status, ...extra });
     load();
   };
 
@@ -86,17 +85,20 @@ export default function Maintenance() {
                 </div>
                 <StatusBadge status={r.status} />
               </div>
-              {canApproveMaintenance(user?.role) && r.status === 'Pending' && (
+              {isAssetManager && r.status === 'Pending' && (
                 <div className="mt-3 flex gap-2">
                   <button onClick={() => updateStatus(r._id, 'Approved')} className="rounded bg-green-600 px-3 py-1 text-xs text-white">Approve</button>
                   <button onClick={() => updateStatus(r._id, 'Rejected')} className="rounded bg-red-600 px-3 py-1 text-xs text-white">Reject</button>
                 </div>
               )}
-              {canApproveMaintenance(user?.role) && r.status === 'Approved' && (
+              {isAssetManager && r.status === 'Approved' && (
+                <button onClick={() => updateStatus(r._id, 'TechnicianAssigned', { technicianName: 'Tech Team' })} className="mt-3 rounded bg-purple-600 px-3 py-1 text-xs text-white">Assign Technician</button>
+              )}
+              {isAssetManager && r.status === 'TechnicianAssigned' && (
                 <button onClick={() => updateStatus(r._id, 'InProgress')} className="mt-3 rounded bg-orange-600 px-3 py-1 text-xs text-white">Start Work</button>
               )}
-              {canApproveMaintenance(user?.role) && r.status === 'InProgress' && (
-                <button onClick={() => updateStatus(r._id, 'Resolved')} className="mt-3 rounded bg-primary-600 px-3 py-1 text-xs text-white">Mark Resolved</button>
+              {isAssetManager && r.status === 'InProgress' && (
+                <button onClick={() => updateStatus(r._id, 'Resolved', { resolutionNotes: 'Work completed' })} className="mt-3 rounded bg-primary-600 px-3 py-1 text-xs text-white">Mark Resolved</button>
               )}
             </li>
           ))}

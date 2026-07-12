@@ -53,6 +53,11 @@ export default function OrganizationSetup() {
     load();
   };
 
+  const promoteEmployee = async (id, role) => {
+    await api.put(`/employees/${id}/promote`, { role });
+    load();
+  };
+
   if (loading) return <LoadingSpinner />;
 
   const tabs = [
@@ -117,6 +122,7 @@ export default function OrganizationSetup() {
       {tab === 'employees' && (
         <div className="rounded-xl border bg-white p-6">
           <h2 className="mb-4 font-semibold">Employee Directory</h2>
+          <p className="mb-4 text-sm text-slate-500">Role promotion is Admin-only via the protected promote endpoint.</p>
           <table className="w-full text-left text-sm">
             <thead>
               <tr className="border-b text-slate-500">
@@ -139,12 +145,15 @@ export default function OrganizationSetup() {
                     </select>
                   </td>
                   <td className="py-3 pr-4">
-                    <select value={emp.role} onChange={(e) => updateEmployee(emp._id, { role: e.target.value })} className="rounded border px-2 py-1 text-xs">
-                      <option value={ROLES.EMPLOYEE}>Employee</option>
-                      <option value={ROLES.DEPARTMENT_HEAD}>Department Head</option>
-                      <option value={ROLES.ASSET_MANAGER}>Asset Manager</option>
-                      <option value={ROLES.ADMIN}>Admin</option>
-                    </select>
+                    {emp.role === ROLES.ADMIN ? (
+                      <span className="text-xs font-medium">Admin</span>
+                    ) : (
+                      <select value={emp.role} onChange={(e) => promoteEmployee(emp._id, e.target.value)} className="rounded border px-2 py-1 text-xs">
+                        <option value={ROLES.EMPLOYEE}>Employee</option>
+                        <option value={ROLES.DEPARTMENT_HEAD}>Department Head</option>
+                        <option value={ROLES.ASSET_MANAGER}>Asset Manager</option>
+                      </select>
+                    )}
                   </td>
                   <td className="py-3">
                     <select value={emp.status} onChange={(e) => updateEmployee(emp._id, { status: e.target.value })} className="rounded border px-2 py-1 text-xs">
