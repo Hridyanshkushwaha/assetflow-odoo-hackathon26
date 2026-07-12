@@ -1,389 +1,790 @@
-# AssetFlow - Odoo Hackathon 2026 PS-01
+# AssetFlow - Enterprise Asset & Resource Management System
+**Odoo Hackathon 2026 PS-01**
 
-**Enterprise Asset & Resource Management System**
-
-A centralized ERP platform to simplify how organizations track, allocate, and maintain physical assets and shared resources — without spreadsheets, paper logs, or accounting modules.
-
----
-
-## Vision
-
-AssetFlow digitizes asset and resource management for any organization that owns equipment, furniture, vehicles, or shared spaces — offices, schools, hospitals, factories, agencies, and more.
-
-The platform reduces manual tracking inefficiencies by enabling:
-
-- Structured asset lifecycles
-- Centralized resource booking
-- Real-time visibility into **who holds what**, **where it is**, and **its condition**
-
-AssetFlow delivers core ERP functionality with clean architecture, role-based workflows, and scalable module design — **without** purchasing, invoicing, or accounting.
+> A comprehensive ERP platform designed to simplify how organizations track, allocate, and maintain physical assets and shared resources without spreadsheets, paper logs, or accounting complexity.
 
 ---
 
-## Mission
+## 📋 Table of Contents
 
-Build a user-centric, responsive application that gives staff intuitive tools to:
+- [Vision & Mission](#vision--mission)
+- [Problem Statement](#problem-statement)
+- [Key Features](#key-features)
+- [System Architecture](#system-architecture)
+- [Technology Stack](#technology-stack)
+- [Project Structure](#project-structure)
+- [Getting Started](#getting-started)
+- [API Documentation](#api-documentation)
+- [User Roles & Permissions](#user-roles--permissions)
+- [Asset Lifecycle](#asset-lifecycle)
+- [Workflow Examples](#workflow-examples)
+- [Project Status](#project-status)
+- [Contributing](#contributing)
+- [License](#license)
 
-- Set up departments, asset categories, and the employee directory
+---
+
+## 🎯 Vision & Mission
+
+### Vision
+AssetFlow digitizes asset and resource management for any organization that owns equipment, furniture, vehicles, or shared spaces—offices, schools, hospitals, factories, agencies, and more.
+
+The platform eliminates manual tracking inefficiencies by enabling:
+- ✅ Structured asset lifecycles with state management
+- ✅ Centralized resource booking with conflict prevention
+- ✅ Real-time visibility into **who holds what**, **where it is**, and **its condition**
+- ✅ Role-based workflows for secure, scalable operations
+
+### Mission
+Build a user-centric, responsive application that empowers staff with intuitive tools to:
+- Set up departments, asset categories, and maintain the employee directory
 - Register and track assets through their full lifecycle
-- Allocate assets to employees/departments with conflict handling
+- Allocate assets to employees/departments with intelligent conflict handling
 - Book shared resources (rooms, vehicles, equipment) without overlaps
-- Run a structured maintenance approval workflow
-- Run structured audit cycles to catch discrepancies
-- Get notified of overdue returns, bookings, and maintenance events
+- Execute structured maintenance approval workflows
+- Run organized audit cycles to catch and resolve discrepancies
+- Receive timely notifications for overdue returns, bookings, and maintenance events
 
 ---
 
-## Problem Statement
+## ❓ Problem Statement
 
-Organizations need a single system to:
+Organizations face critical challenges without a unified asset management system:
 
-| Capability | Description |
-|---|---|
-| **Master data** | Maintain departments, asset categories, and an employee directory |
-| **Asset lifecycle** | Track assets through flexible states with valid transitions |
-| **Allocation** | Assign assets to employees/departments; prevent double-allocation |
-| **Resource booking** | Book shared/limited resources by time slot with overlap validation |
-| **Maintenance** | Route repair requests through approval before work starts |
-| **Audits** | Run scheduled audit cycles with assigned auditors and auto-generated discrepancy reports |
-| **Visibility** | Surface overdue returns, bookings, and maintenance via notifications and a KPI dashboard |
-
-The application must demonstrate proper ERP architecture, reusable modules, secure role-based workflows (realistic account creation — no self-assigned admin roles), and intuitive UI/UX while handling relationships between departments, employees, assets, bookings, maintenance requests, and audits.
+| Challenge | Impact | AssetFlow Solution |
+|-----------|--------|-------------------|
+| **Fragmented Data** | Assets tracked across spreadsheets and paper logs | Centralized database with real-time visibility |
+| **Double Allocation** | Same asset allocated to multiple people/departments | Intelligent conflict detection and transfer requests |
+| **Resource Conflicts** | Meetings/vehicles booked simultaneously in multiple slots | Calendar-based overlap validation |
+| **Maintenance Delays** | No structured workflow; repairs lost in email threads | Approval-based workflow with status tracking |
+| **Audit Inefficiency** | Manual physical counts; discrepancies found too late | Automated audit cycles with digital verification |
+| **Poor Visibility** | No dashboard; hard to find assets or spot overdue returns | KPI dashboard with real-time alerts |
 
 ---
 
-## Asset Lifecycle States
+## ✨ Key Features
 
-| State | Description |
-|---|---|
-| **Available** | Ready for allocation or booking |
-| **Allocated** | Assigned to an employee or department |
-| **Reserved** | Held for a pending allocation or transfer |
-| **Under Maintenance** | In repair; set automatically on maintenance approval |
-| **Lost** | Confirmed missing via audit |
-| **Retired** | No longer in active use |
-| **Disposed** | Permanently removed from inventory |
+### 1. **Authentication & Authorization**
+- Email and password-based authentication
+- Password reset and forgot password workflows
+- JWT-based session management with secure token validation
+- Role-based access control (Admin, Asset Manager, Department Head, Employee)
+- Automatic first-user admin promotion; subsequent signups as employees
 
-**Example transitions:** Available ↔ Under Maintenance · Allocated → Available (on return)
+### 2. **Dashboard & Analytics**
+- **KPI Cards:** Assets Available, Allocated, Under Maintenance, Active Bookings, Pending Transfers, Upcoming Returns
+- **Overdue Flags:** Separate highlighting for overdue returns vs. upcoming ones
+- **Quick Actions:** Register Asset, Book Resource, Raise Maintenance Request
 
----
+### 3. **Organization Setup** *(Admin-only)*
+- **Department Management:** Create/edit/deactivate departments with optional hierarchy
+- **Category Management:** Define asset categories with custom fields (e.g., warranty for Electronics)
+- **Employee Directory:** View all employees, manage departments, promote roles
 
-## User Roles
+### 4. **Asset Lifecycle Management**
+- **Registration:** Name, Category, Auto-generated Asset Tag (e.g., `AF-0001`), Serial Number, Acquisition Date, Condition, Location, Photo/Documents
+- **Directory:** Search and filter by Asset Tag, Serial Number, QR code, category, status, department, or location
+- **Status Tracking:** Available → Allocated → Under Maintenance → Returned → Available
+- **History:** Complete audit trail of allocation and maintenance events per asset
 
-| Role | Responsibilities |
-|---|---|
-| **Admin** | Manages departments, asset categories, audit cycles, and employee/role assignment. Views organization-wide analytics. |
-| **Asset Manager** | Registers and allocates assets. Approves transfers, maintenance requests, audit discrepancy resolution, and asset returns. |
-| **Department Head** | Views department assets. Approves allocation/transfer requests within their department. Books shared resources for the department. |
-| **Employee** | Views assigned assets. Books shared resources. Raises maintenance requests. Initiates return/transfer requests. |
+### 5. **Asset Allocation & Transfer**
+- Allocate assets to employees/departments with optional expected return dates
+- **Conflict Prevention:** System blocks double-allocation and suggests transfer requests
+- **Transfer Workflow:** Requested → Approved (Asset Manager/Department Head) → Re-allocated
+- **Return Flow:** Mark returned, capture condition notes, status reverts to Available
+- **Overdue Alerts:** Automatic flagging and notification for late returns
 
-> **Role assignment rule:** Signup creates an **Employee** account only. Admin promotes users to **Department Head** or **Asset Manager** from the Employee Directory — roles are never self-selected at signup.
+### 6. **Resource Booking**
+- Calendar-based booking interface for shared resources
+- **Overlap Validation:** Rejects overlapping time slots (e.g., 9:00–10:00 blocks 9:30–10:30)
+- **Booking States:** Upcoming, Ongoing, Completed, Cancelled
+- **Management:** Cancel, reschedule, and receive reminder notifications before slot starts
 
----
+### 7. **Maintenance Management**
+- Raise requests with asset selection, issue description, priority, and photo attachments
+- **Approval Workflow:** Pending → Approved/Rejected → Technician Assigned → In Progress → Resolved
+- **Automatic Status:** Asset marked as "Under Maintenance" on approval; reverts to "Available" on resolution
+- **History:** Full maintenance event log retained per asset
 
-## Features
+### 8. **Asset Audits**
+- Create audit cycles with scope (department/location), date range, and assigned auditors
+- **Auditor Tasks:** Mark each asset as Verified, Missing, or Damaged
+- **Discrepancy Reports:** Auto-generated for flagged items
+- **Cycle Management:** Close cycle to lock and update statuses (e.g., Missing → Lost)
+- **Audit History:** Complete record of all audits and their findings
 
-### 1. Login / Signup
+### 9. **Reports & Business Intelligence**
+- Asset utilization trends and idle asset identification
+- Maintenance frequency analysis by asset and category
+- Assets due for maintenance or retirement
+- Department-wise allocation summaries
+- Resource booking heatmaps showing peak usage windows
+- Exportable reports for stakeholder communication
 
-- Email & password authentication, forgot password, session validation
-- Signup creates Employee accounts only — no role selection
-- Admin promotes roles from the Employee Directory
-
-### 2. Dashboard / Home
-
-- **KPI cards:** Assets Available, Assets Allocated, Maintenance Today, Active Bookings, Pending Transfers, Upcoming Returns
-- Overdue returns highlighted separately from upcoming ones
-- **Quick actions:** Register Asset · Book Resource · Raise Maintenance Request
-
-### 3. Organization Setup *(Admin only — 3 tabs)*
-
-**Tab A — Department Management**
-- Create/edit/deactivate departments
-- Assign Department Head, optional Parent Department (hierarchy), Status (Active/Inactive)
-
-**Tab B — Asset Category Management**
-- Create/edit categories (Electronics, Furniture, Vehicles, etc.)
-- Optional category-specific fields (e.g. warranty period for Electronics)
-
-**Tab C — Employee Directory**
-- Name, Email, Department, Role, Status (Active/Inactive)
-- Admin promotes Employee → Department Head or Asset Manager
-
-### 4. Asset Registration & Directory
-
-- **Register:** Name, Category, auto-generated Asset Tag (e.g. `AF-0001`), Serial Number, Acquisition Date, Acquisition Cost (reports only), Condition, Location, photo/documents, shared/bookable flag
-- Search/filter by Asset Tag, Serial Number, QR code, category, status, department, or location
-- Lifecycle status per asset
-- Per-asset history: allocation + maintenance
-
-### 5. Asset Allocation & Transfer
-
-- Allocate to employee/department with optional Expected Return Date
-- **Conflict rule:** Cannot allocate an asset already held by someone else — system blocks, shows current holder, offers **Transfer Request**
-- **Transfer workflow:** Requested → Approved (Asset Manager / Department Head) → Re-allocated (history updated)
-- **Return flow:** Mark returned, capture condition check-in notes, status reverts to Available
-- Overdue allocations auto-flagged → Dashboard + Notifications
-
-### 6. Resource Booking
-
-- Calendar view of existing bookings per resource
-- **Overlap validation:** Overlapping time slots rejected (e.g. 9:00–10:00 blocks 9:30–10:30; 10:00–11:00 is allowed)
-- Booking status: Upcoming · Ongoing · Completed · Cancelled
-- Cancel/reschedule; reminder notification before slot starts
-
-### 7. Maintenance Management
-
-- Raise request: select asset, describe issue, set priority, attach photo
-- **Workflow:** Pending → Approved / Rejected → Technician Assigned → In Progress → Resolved
-- Asset status → **Under Maintenance** on approval; → **Available** on resolution
-- Maintenance history retained per asset
-
-### 8. Asset Audit
-
-- Create Audit Cycle (scope: department/location, date range)
-- Assign one or more auditors
-- Auditor marks each asset: Verified · Missing · Damaged
-- Auto-generated discrepancy report for flagged items
-- Close Audit Cycle — locks cycle, updates statuses (e.g. Missing → Lost)
-- Audit history retained per cycle
-
-### 9. Reports & Analytics
-
-- Asset utilization trends; most-used vs. idle assets
-- Maintenance frequency by asset/category
-- Assets due for maintenance or nearing retirement
-- Department-wise allocation summary
-- Resource booking heatmap (peak usage windows)
-- Exportable reports
-
-### 10. Activity Logs & Notifications
-
-**Notification types:** Asset Assigned · Maintenance Approved/Rejected · Booking Confirmed/Cancelled/Reminder · Transfer Approved · Overdue Return Alert · Audit Discrepancy Flagged
-
-**Activity log:** Full audit trail of admin/manager/employee actions (who did what, when)
+### 10. **Activity Logs & Notifications**
+- **In-App Notifications:** Asset Assigned, Maintenance Approved/Rejected, Booking Confirmed/Cancelled/Reminder, Transfer Approved, Overdue Return Alert, Audit Discrepancy Flagged
+- **Activity Logs:** Complete audit trail of all actions (who, what, when) for compliance and troubleshooting
 
 ---
 
-## Basic Workflow
+## 🏗️ System Architecture
 
+### High-Level Data Flow
 ```
-Admin sets up org (departments, categories, roles)
-        ↓
-Asset Manager registers asset → Available
-        ↓
-Asset allocated to employee/department
-  (blocked if already allocated → Transfer Request required)
-  OR marked as shared/bookable resource
-        ↓
-Employees book shared resources by time slot
-  (overlapping requests rejected automatically)
-        ↓
-Maintenance request raised → approved → Under Maintenance → resolved → Available
-        ↓
-Assets transferred or returned as needs change
-  (overdue returns flagged automatically)
-        ↓
-Periodic audit cycles → auditors verify → discrepancy reports → cycle closed
-        ↓
-All activity tracked via notifications, logs, and reports
+┌─────────────────────────────────────────────────────────────┐
+│                     Frontend (React + Vite)                  │
+│  Dashboard | Asset Registry | Allocations | Bookings | Audits│
+└──────────────────────────┬──────────────────────────────────┘
+                           │ (Axios API Calls)
+                           ▼
+┌─────────────────────────────────────────────────────────────┐
+│              Backend API (Node.js + Express)                 │
+│  ┌───────────┬──────────┬──────────┬──────────┬────────────┐│
+│  │ Auth      │ Assets   │ Alloc.   │ Booking  │ Maintenance││
+│  │ Dept/Cats │ Transfers│ Audits   │ Reports  │ Notif.    ││
+│  └───────────┴──────────┴──────────┴──────────┴────────────┘│
+└──────────────────────────┬──────────────────────────────────┘
+                           │ (Mongoose ORM)
+                           ▼
+┌─────────────────────────────────────────────────────────────┐
+│        Database (MongoDB Atlas)                               │
+│  Users | Assets | Allocations | Bookings | Maintenance      │
+│  Audits | Notifications | ActivityLogs | Departments        │
+└─────────────────────────────────────────────────────────────┘
 ```
 
----
+### Request-Response Pattern
+1. Frontend sends HTTP request (with JWT token in Authorization header)
+2. Middleware validates JWT and attaches user context
+3. Route handler calls appropriate controller
+4. Controller executes business logic + database queries
+5. Controller returns JSON response
+6. Frontend updates state and re-renders UI
 
-## Out of Scope
-
-- Purchasing
-- Invoicing
-- Accounting / financial ledger integration
-
-Acquisition cost is stored for ranking and reports only.
-
----
-
-## Tech Stack
-
-| Layer | Technologies |
-|---|---|
-| **Frontend** | React (Vite), React Router, Tailwind CSS, Axios |
-| **Backend** | Node.js, Express.js |
-| **Database** | MongoDB Atlas via Mongoose |
-| **Auth** | JWT + bcrypt password hashing |
-| **File uploads** | Multer (local disk; paths stored in MongoDB) |
+### Async Jobs
+- **Overdue Checker:** Runs every hour to flag overdue allocations and trigger notifications
+- **Scheduled Audits:** Audit cycles can be scheduled and will notify assigned auditors
 
 ---
 
-## Project Structure
+## 💻 Technology Stack
+
+| Layer | Technology | Purpose |
+|-------|-----------|---------|
+| **Frontend** | React 18.3 | UI library and component framework |
+| **Frontend Bundler** | Vite 5.4 | Fast development server and build tool |
+| **Frontend Router** | React Router 6.26 | Client-side routing and navigation |
+| **Frontend Styling** | Tailwind CSS 3.4 | Utility-first CSS framework |
+| **HTTP Client** | Axios 1.7 | Promise-based API requests |
+| **Backend Runtime** | Node.js 18+ | JavaScript runtime |
+| **Backend Framework** | Express.js 4.21 | Lightweight web framework |
+| **Database** | MongoDB Atlas | NoSQL document database |
+| **ODM** | Mongoose 8.7 | MongoDB object data modeling |
+| **Authentication** | JWT + bcryptjs | Token-based auth with secure password hashing |
+| **File Upload** | Multer 1.4 | Middleware for form-data file uploads |
+| **CORS** | cors 2.8 | Cross-Origin Resource Sharing |
+| **Environment** | dotenv 16.4 | Environment variable management |
+
+### Why This Stack?
+- **React + Vite:** Fast development, modern syntax (ES6+), component reusability, excellent DevX
+- **Express.js:** Lightweight, modular, large ecosystem, perfect for ERP APIs
+- **MongoDB:** Flexible schema ideal for evolving asset attributes; easy horizontal scaling
+- **Mongoose:** Schema validation, middleware hooks, rich query API
+- **JWT:** Stateless authentication; scales horizontally without session storage
+
+---
+
+## 📁 Project Structure
 
 ```
-assetflow/
-├── backend/
+assetflow-odoo-hackathon26/
+│
+├── backend/                          # Express.js API Server
 │   ├── src/
-│   │   ├── models/          # Mongoose schemas
-│   │   ├── routes/          # Express route definitions
-│   │   ├── controllers/     # Business logic
-│   │   ├── middleware/      # Auth, file upload
-│   │   ├── utils/           # Helpers (asset tags, notifications)
-│   │   └── server.js
-│   ├── uploads/             # Local file storage
-│   ├── .env.example
-│   └── package.json
-├── frontend/
+│   │   ├── server.js                # Main Express app setup & MongoDB connection
+│   │   ├── models/                  # Mongoose schemas
+│   │   │   ├── User.js              # User with roles (Admin, AssetManager, DeptHead, Employee)
+│   │   │   ├── Department.js        # Department hierarchy, head assignment
+│   │   │   ├── AssetCategory.js     # Asset category with custom fields
+│   │   │   ├── Asset.js             # Core asset with lifecycle status
+│   │   │   ├── Allocation.js        # Asset allocation to user/department
+│   │   │   ├── TransferRequest.js   # Transfer workflow
+│   │   │   ├── Booking.js           # Resource booking with time slots
+│   │   │   ├── MaintenanceRequest.js# Maintenance workflow
+│   │   │   ├── AuditCycle.js        # Audit cycle definition
+│   │   │   ├── AuditItem.js         # Per-asset audit result
+│   │   │   ├── Notification.js      # In-app notifications
+│   │   │   └── ActivityLog.js       # Complete audit trail
+│   │   ├── controllers/             # Business logic layer
+│   │   │   ├── authController.js    # Signup, login, JWT handling
+│   │   │   ├── userController.js    # User management, role promotion
+│   │   │   ├── departmentController.js
+│   │   │   ├── categoryController.js
+│   │   │   ├── assetController.js   # Asset registration & directory
+│   │   │   ├── allocationController.js
+│   │   │   ├── transferController.js (implicit, in allocationController)
+│   │   │   ├── bookingController.js # Calendar, overlap validation
+│   │   │   ├── maintenanceController.js
+│   │   │   ├── auditController.js
+│   │   │   ├── dashboardController.js
+│   │   │   ├── reportController.js  # Analytics & reports
+│   │   │   ├── notificationController.js
+│   │   ├── routes/                  # Express route handlers
+│   │   │   ├── authRoutes.js
+│   │   │   ├── userRoutes.js
+│   │   │   ├── departmentRoutes.js
+│   │   │   ├── categoryRoutes.js
+│   │   │   ├── assetRoutes.js
+│   │   │   ├── allocationRoutes.js
+│   │   │   ├── transferRoutes.js
+│   │   │   ├── bookingRoutes.js
+│   │   │   ├── maintenanceRoutes.js
+│   │   │   ├── auditRoutes.js
+│   │   │   ├── dashboardRoutes.js
+│   │   │   ├── reportRoutes.js
+│   │   │   ├── notificationRoutes.js
+│   │   ├── middleware/              # Auth, file upload, error handling
+│   │   ├── utils/                   # Helper functions
+│   │   │   ├── overdueChecker.js    # Scheduled overdue detection
+│   │   │   ├── assetTagGenerator.js # Auto-generate AF-XXXX tags
+│   │   │   └── ... (other utilities)
+│   │   └── constants/               # Enums, valid states, role definitions
+│   ├── uploads/                     # Local file storage for asset photos/documents
+│   ├── .env.example                 # Environment variable template
+│   ├── .gitignore
+│   ├── package.json
+│   └── package-lock.json
+│
+├── frontend/                        # React + Vite SPA
 │   ├── src/
-│   │   ├── pages/           # Screen components
-│   │   ├── components/      # Layout, sidebar, shared UI
-│   │   ├── context/         # Auth context
-│   │   ├── services/        # Axios API client
-│   │   ├── App.jsx
-│   │   └── main.jsx
-│   └── package.json
-└── README.md
+│   │   ├── main.jsx                # Application entry point
+│   │   ├── App.jsx                 # Main routing & layout
+│   │   ├── index.css               # Global styles
+│   │   ├── pages/                  # Screen components
+│   │   │   ├── Login.jsx
+│   │   │   ├── Signup.jsx
+│   │   │   ├── ForgotPassword.jsx
+│   │   │   ├── ResetPassword.jsx
+│   │   │   ├── Dashboard.jsx       # KPI cards, quick actions
+│   │   │   ├── OrganizationSetup.jsx # Admin: Depts, Categories, Employees
+│   │   │   ├── Assets.jsx          # Asset registry with search/filter
+│   │   │   ├── AssetDetail.jsx     # Single asset view + history
+│   │   │   ├── Allocations.jsx     # Allocation list & transfer requests
+│   │   │   ├── Bookings.jsx        # Calendar-based resource booking
+│   │   │   ├── Maintenance.jsx     # Maintenance requests & workflows
+│   │   │   ├── Audits.jsx          # Audit cycles & discrepancy reports
+│   │   │   ├── Reports.jsx         # Analytics & export
+│   │   │   └── Notifications.jsx   # Notification center & activity logs
+│   │   ├── components/             # Reusable UI components
+│   │   │   ├── Navbar.jsx
+│   │   │   ├── Sidebar.jsx
+│   │   │   ├── ... (other components)
+│   │   ├── context/                # React Context for auth state
+│   │   │   └── AuthContext.jsx
+│   │   ├── services/               # Axios API client wrappers
+│   │   │   ├── api.js              # Axios instance with token injection
+│   │   │   ├── authService.js
+│   │   │   ├── assetService.js
+│   │   │   └── ... (other services)
+│   │   ├── utils/                  # Helper functions, formatting, validation
+│   │   ├── config/                 # Configuration constants
+│   │   └── App.css
+│   ├── index.html
+│   ├── tailwind.config.js
+│   ├── vite.config.js
+│   ├── postcss.config.js
+│   ├── .gitignore
+│   ├── package.json
+│   └── package-lock.json
+│
+├── .gitignore
+└── README.md                        # This file
 ```
+
+### Key Design Decisions
+- **Separation of Concerns:** Controllers handle business logic, routes handle HTTP mapping, models define schemas
+- **Middleware:** Auth middleware validates JWT before processing requests
+- **Utilities:** Shared logic (e.g., asset tag generation, overdue detection) in `/utils`
+- **Context API:** Auth state managed globally via React Context; no Redux needed for MVP
+- **Tailwind CSS:** Utility-first approach ensures consistent, responsive design without custom CSS overhead
 
 ---
 
-## Getting Started
+## 🚀 Getting Started
 
 ### Prerequisites
+- **Node.js:** Version 18 or higher
+- **npm:** Version 9 or higher (bundled with Node.js)
+- **MongoDB:** Atlas cluster (free tier available) or local MongoDB instance
+- **Git:** For cloning the repository
 
-- Node.js 18+
-- MongoDB Atlas cluster (or local MongoDB)
+### 1. Clone the Repository
+```bash
+git clone https://github.com/Hridyanshkushwaha/assetflow-odoo-hackathon26.git
+cd assetflow-odoo-hackathon26
+```
 
-### 1. Backend setup
+### 2. Backend Setup
 
+#### 2.1 Navigate to Backend Directory
 ```bash
 cd backend
-cp .env.example .env
-# Edit .env with your MongoDB Atlas URI and JWT secret
-
-npm install
-npm run dev
 ```
 
-Backend runs at **http://localhost:5000**
-
-### 2. Frontend setup
-
+#### 2.2 Install Dependencies
 ```bash
-cd frontend
 npm install
-npm run dev
 ```
 
-Frontend runs at **http://localhost:5173** (proxies `/api` and `/uploads` to backend)
+#### 2.3 Configure Environment Variables
+```bash
+cp .env.example .env
+```
 
-### Environment Variables
-
-Create `backend/.env` from `.env.example`:
-
+Edit `.env` with your configuration:
 ```env
-MONGO_URI=your_mongodb_atlas_connection_string
-JWT_SECRET=your_jwt_secret
+MONGO_URI=mongodb+srv://username:password@cluster.mongodb.net/assetflow?retryWrites=true&w=majority
+JWT_SECRET=your_super_secret_jwt_key_min_32_chars
 PORT=5000
 ```
 
-### First-time usage
+**Where to get MONGO_URI:**
+1. Go to [MongoDB Atlas](https://www.mongodb.com/cloud/atlas)
+2. Create/login to your account
+3. Create a cluster or use existing one
+4. Click "Connect" → "Drivers" → Copy the connection string
+5. Replace `<username>`, `<password>`, and `<dbname>` in the URI
 
-1. **Sign up** — the first registered user becomes **Admin**; all subsequent signups are **Employee**
-2. Admin sets up **departments**, **categories**, and promotes roles in **Organization Setup**
-3. Asset Manager registers assets and begins allocations
+#### 2.4 Start the Backend Server
+```bash
+npm run dev
+```
 
----
+Expected output:
+```
+MongoDB connected
+AssetFlow API running on port 5000
+```
 
-## API Routes
+✅ Backend is running at **http://localhost:5000**
 
-### Auth
-| Method | Route | Description |
-|---|---|---|
-| POST | `/api/auth/signup` | Register (Employee only; first user = Admin) |
-| POST | `/api/auth/login` | Login |
-| GET | `/api/auth/me` | Current user (JWT) |
+### 3. Frontend Setup
 
-### Organization
-| Method | Route | Description |
-|---|---|---|
-| GET/POST/PUT | `/api/departments` | List, create, update departments (Admin write) |
-| GET/POST/PUT | `/api/categories` | List, create, update categories (Admin write) |
-| GET/PUT | `/api/users` | List users; Admin update department, status, promote role |
+#### 3.1 Open a New Terminal and Navigate to Frontend
+```bash
+cd frontend
+```
 
-### Assets
-| Method | Route | Description |
-|---|---|---|
-| GET/POST/PUT | `/api/assets` | List, register, update assets |
-| GET | `/api/assets/bookable` | List bookable resources |
-| GET | `/api/assets/:id` | Single asset |
-| GET | `/api/assets/:id/history` | Allocation + maintenance history |
+#### 3.2 Install Dependencies
+```bash
+npm install
+```
 
-### Allocations & Transfers
-| Method | Route | Description |
-|---|---|---|
-| GET/POST | `/api/allocations` | List / create allocation |
-| POST | `/api/allocations/:id/return` | Return asset |
-| GET/POST | `/api/transfers` | List / request transfer |
-| POST | `/api/transfers/:id/approve` | Approve or reject transfer |
+#### 3.3 Start the Development Server
+```bash
+npm run dev
+```
 
-### Bookings
-| Method | Route | Description |
-|---|---|---|
-| GET/POST | `/api/bookings` | List / create booking |
-| POST | `/api/bookings/:id/cancel` | Cancel booking |
-| GET | `/api/bookings/calendar/:resourceId` | Resource calendar |
+Expected output:
+```
+VITE v5.4.8  ready in XXX ms
 
-### Maintenance
-| Method | Route | Description |
-|---|---|---|
-| GET/POST | `/api/maintenance` | List / raise request |
-| POST | `/api/maintenance/:id/approve` | Approve or reject (`{ approved: true/false }`) |
-| POST | `/api/maintenance/:id/assign-technician` | Assign technician & start work |
-| POST | `/api/maintenance/:id/resolve` | Mark resolved |
+Local:    http://localhost:5173/
+```
 
-### Audits
-| Method | Route | Description |
-|---|---|---|
-| GET/POST | `/api/audits` | List / create audit cycle |
-| GET | `/api/audits/:id` | Cycle detail + items |
-| POST | `/api/audits/:id/items` | Submit item result (`{ itemId, result, notes }`) |
-| POST | `/api/audits/:id/close` | Close cycle + discrepancy report |
-| GET | `/api/audits/:id/discrepancies` | Discrepancy report |
+✅ Frontend is running at **http://localhost:5173**
 
-### Dashboard & Reports
-| Method | Route | Description |
-|---|---|---|
-| GET | `/api/dashboard/kpis` | KPI dashboard + overdue flags |
-| GET | `/api/reports/utilization` | Asset utilization & idle assets |
-| GET | `/api/reports/maintenance-frequency` | Maintenance by category |
-| GET | `/api/reports/allocation-summary` | Allocations by department |
-| GET | `/api/reports/booking-heatmap` | Booking peak hours |
+### 4. First-Time Usage
 
-### Notifications
-| Method | Route | Description |
-|---|---|---|
-| GET | `/api/notifications` | User notifications |
-| PUT | `/api/notifications/:id/read` | Mark one read |
-| PUT | `/api/notifications/read-all` | Mark all read |
-| GET | `/api/notifications/activity-logs` | Activity log (Admin/AssetManager) |
+#### 4.1 Sign Up
+- Navigate to **http://localhost:5173**
+- Click "Sign Up"
+- Enter email and password
+- **First registered user automatically becomes Admin**
+- Log in with your credentials
 
-Health check: `GET /api/health`
+#### 4.2 Admin Setup
+- Navigate to **Organization Setup** tab
+- Create departments (e.g., IT, HR, Finance)
+- Create asset categories (e.g., Electronics, Furniture, Vehicles)
+- Promote employees to Department Head or Asset Manager as needed
+
+#### 4.3 Asset Manager Registers Assets
+- Navigate to **Assets**
+- Click "Register Asset"
+- Fill in asset details (name, category, serial number, etc.)
+- Asset gets auto-generated tag (e.g., AF-0001)
+
+#### 4.4 Allocate and Book
+- Allocate assets to employees/departments from the **Allocations** page
+- Book shared resources from the **Bookings** page
+- Raise maintenance requests from the **Maintenance** page
 
 ---
 
-## Project Status
+## 📡 API Documentation
 
-> **Hackathon build in progress** — incremental commits pushed throughout the event.
+### Base URL
+```
+http://localhost:5000/api
+```
 
-| Module | Status |
-|---|---|
-| Authentication & roles | ✅ Implemented |
-| Organization setup | ✅ Implemented |
-| Asset registration & directory | ✅ Implemented |
-| Allocation & transfer | ✅ Implemented |
-| Resource booking | ✅ Implemented |
-| Maintenance workflow | ✅ Implemented |
-| Asset audit | ✅ Implemented |
-| Reports & analytics | ✅ Implemented |
-| Notifications & activity logs | ✅ Implemented |
+### Authentication
+All endpoints (except `/auth/signup` and `/auth/login`) require a JWT token in the `Authorization` header:
+```
+Authorization: Bearer <your_jwt_token>
+```
+
+### Endpoints
+
+#### **Authentication**
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/auth/signup` | Register a new user (Employee by default, first user becomes Admin) |
+| POST | `/auth/login` | Login and receive JWT token |
+| GET | `/auth/me` | Get current user info (requires JWT) |
+
+#### **Organization**
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/departments` | List all departments |
+| POST | `/departments` | Create department (Admin only) |
+| PUT | `/departments/:id` | Update department (Admin only) |
+| GET | `/categories` | List all asset categories |
+| POST | `/categories` | Create category (Admin only) |
+| PUT | `/categories/:id` | Update category (Admin only) |
+| GET | `/users` | List all users |
+| PUT | `/users/:id` | Update user (Admin can change role, department, status) |
+
+#### **Assets**
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/assets` | List all assets (with filters: status, category, department, location) |
+| POST | `/assets` | Register new asset (AssetManager+) |
+| PUT | `/assets/:id` | Update asset details |
+| GET | `/assets/:id` | Get single asset details |
+| GET | `/assets/:id/history` | Get allocation + maintenance history for asset |
+| GET | `/assets/bookable` | List assets marked as bookable resources |
+
+#### **Allocations & Transfers**
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/allocations` | List all allocations |
+| POST | `/allocations` | Create new allocation |
+| POST | `/allocations/:id/return` | Return an allocated asset (capture condition notes) |
+| GET | `/transfers` | List transfer requests |
+| POST | `/transfers` | Request transfer (if asset already allocated) |
+| POST | `/transfers/:id/approve` | Approve or reject transfer (AssetManager/DeptHead) |
+
+#### **Bookings**
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/bookings` | List all bookings (with filters: resource, user, status) |
+| POST | `/bookings` | Create new booking (validates no overlap) |
+| POST | `/bookings/:id/cancel` | Cancel an upcoming booking |
+| GET | `/bookings/calendar/:resourceId` | Get calendar view of bookings for a resource |
+
+#### **Maintenance**
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/maintenance` | List all maintenance requests |
+| POST | `/maintenance` | Raise new maintenance request |
+| POST | `/maintenance/:id/approve` | Approve or reject request (AssetManager; sets asset to "Under Maintenance") |
+| POST | `/maintenance/:id/assign-technician` | Assign technician and start work |
+| POST | `/maintenance/:id/resolve` | Mark resolved (reverts asset to "Available") |
+
+#### **Audits**
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/audits` | List audit cycles |
+| POST | `/audits` | Create new audit cycle (Admin; specify scope and auditors) |
+| GET | `/audits/:id` | Get cycle details + items to audit |
+| POST | `/audits/:id/items` | Submit audit result for an item (Verified/Missing/Damaged) |
+| POST | `/audits/:id/close` | Close audit cycle (locks, updates statuses) |
+| GET | `/audits/:id/discrepancies` | Get auto-generated discrepancy report |
+
+#### **Dashboard & Reports**
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/dashboard/kpis` | KPI dashboard: available assets, allocations, maintenance today, etc. |
+| GET | `/reports/utilization` | Asset utilization trends + idle asset identification |
+| GET | `/reports/maintenance-frequency` | Maintenance count by category |
+| GET | `/reports/allocation-summary` | Allocations by department |
+| GET | `/reports/booking-heatmap` | Resource booking peak hours |
+
+#### **Notifications**
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/notifications` | Get user's notifications |
+| PUT | `/notifications/:id/read` | Mark single notification as read |
+| PUT | `/notifications/read-all` | Mark all notifications as read |
+| GET | `/notifications/activity-logs` | Get activity log (Admin/AssetManager only) |
+
+#### **Health Check**
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/health` | Check API status |
 
 ---
 
-## License
+## 👥 User Roles & Permissions
 
-TBD — Hackathon project.
+| Role | Responsibilities | Permissions |
+|------|-----------------|-------------|
+| **Admin** | System setup, organization configuration, user management | Create departments/categories, promote users, view analytics, manage all audits |
+| **Asset Manager** | Asset registration, allocation approval, maintenance approval | Register assets, approve transfers, approve maintenance, assign technicians, close audits |
+| **Department Head** | Department asset management, resource booking for department | View dept assets, approve transfers within dept, book resources, raise maintenance |
+| **Employee** | Daily asset and resource usage | View assigned assets, book resources, raise maintenance requests, return assets |
+
+### Role Assignment Rule
+- **Signup:** All new users default to **Employee** role
+- **Promotion:** Only Admin can promote Employee → Department Head or Asset Manager
+- **No Self-Assignment:** Users cannot select roles during signup
+
+---
+
+## 🔄 Asset Lifecycle
+
+AssetFlow defines seven asset states with valid transitions:
+
+```
+Available  ←→  Under Maintenance
+   ↓              ↑
+Allocated   →   Reserved
+   ↓
+Retired / Disposed → Lost
+```
+
+| State | Description | Possible Actions |
+|-------|-------------|-----------------|
+| **Available** | Ready for allocation or booking | Allocate, Book, Schedule Maintenance |
+| **Allocated** | Assigned to employee/department | Return, Transfer, Request Maintenance |
+| **Reserved** | Held for pending allocation/transfer | Allocate, Cancel Reservation |
+| **Under Maintenance** | In repair (automatic on maintenance approval) | Resolve, Extend (reschedule) |
+| **Lost** | Confirmed missing via audit | Retire, Dispose |
+| **Retired** | No longer in active use | Dispose (permanent removal) |
+| **Disposed** | Permanently removed from inventory | *(End state—no further actions)* |
+
+### Example Transition Flow
+```
+1. Asset registered → Available
+2. Allocated to John → Allocated
+3. John requests maintenance → Under Maintenance (automatic)
+4. Technician fixes it → Available (after resolution)
+5. John returns it → Available
+6. John requests again → Allocated
+7. Audit marks it as lost → Lost
+8. Admin disposes of it → Disposed
+```
+
+---
+
+## 🔁 Workflow Examples
+
+### Example 1: Asset Allocation with Conflict Handling
+```
+Scenario: Manager tries to allocate an already-allocated asset
+
+Step 1: Manager navigates to Allocations, clicks "Allocate Asset"
+Step 2: System shows: "Laptop #AF-0001 is currently held by John Smith (until 2026-07-31)"
+Step 3: Manager clicks "Request Transfer"
+Step 4: Transfer request created with status "Pending"
+Step 5: Asset Manager notified
+Step 6: Asset Manager reviews and approves transfer
+Step 7: Asset re-allocated to Manager; John notified to return it
+Step 8: John marks asset as returned → Status back to "Available"
+Step 9: Manager can now use the asset
+
+Result: Zero downtime; clear audit trail; all stakeholders notified
+```
+
+### Example 2: Resource Booking with Overlap Validation
+```
+Scenario: Employee books a conference room
+
+Step 1: Employee navigates to Bookings, selects Conference Room A
+Step 2: Calendar shows existing bookings (9:00–10:00 AM, 2:00–3:00 PM)
+Step 3: Employee tries to book 9:30–10:30 AM
+Step 4: System rejects: "Overlaps with existing booking 9:00–10:00 AM"
+Step 5: Employee reschedules to 10:00–11:00 AM
+Step 6: System accepts (no overlap; exactly after previous booking)
+Step 7: Booking confirmed; reminder notification 15 mins before slot
+
+Result: No double-bookings; smooth resource utilization
+```
+
+### Example 3: Maintenance Approval Workflow
+```
+Scenario: Employee raises maintenance request for a printer
+
+Step 1: Employee navigates to Maintenance, clicks "Raise Request"
+Step 2: Fills in: Printer #AF-0123, Issue: "Paper jam frequently", Priority: High
+Step 3: Attaches photo of the error message
+Step 4: Request created with status "Pending"
+Step 5: Asset Manager notified of pending request
+Step 6: Asset Manager reviews and approves
+Step 7: Asset status automatically → "Under Maintenance"
+Step 8: Technician assigned and notified
+Step 9: Technician marks as "In Progress"
+Step 10: After repair, technician clicks "Resolve"
+Step 11: Asset status automatically → "Available"
+Step 12: Employee and manager notified
+
+Result: Structured workflow; clear escalation paths; no lost requests
+```
+
+### Example 4: Audit Cycle Execution
+```
+Scenario: Admin runs quarterly audit for IT department
+
+Step 1: Admin navigates to Audits, clicks "Create Audit Cycle"
+Step 2: Specifies: Department: IT, Date Range: Q3 2026, Auditors: 2 people
+Step 3: System generates audit items for all IT department assets
+Step 4: Auditors notified with audit assignment
+Step 5: Auditors scan QR codes and mark each asset:
+         - "Verified" if physically present and in good condition
+         - "Damaged" if present but needs repair
+         - "Missing" if not found
+Step 6: Auditor uploads photos for damaged items
+Step 7: Admin closes audit cycle
+Step 8: System auto-generates discrepancy report:
+         - 95 verified, 3 damaged, 2 missing
+         - Missing assets marked as "Lost"
+         - Damaged assets marked for maintenance
+Step 9: Report exported for stakeholder review
+
+Result: Accurate inventory; auto-flagged discrepancies; full accountability
+```
+
+---
+
+## 📊 Project Status
+
+> **Status:** Hackathon build in progress — incremental commits pushed throughout the event.
+
+### Implementation Checklist
+
+| Module | Status | Notes |
+|--------|--------|-------|
+| Authentication & Roles | ✅ Implemented | JWT-based with bcrypt hashing |
+| Organization Setup | ✅ Implemented | Departments, categories, employee directory |
+| Asset Registration & Directory | ✅ Implemented | Full CRUD with search/filter |
+| Asset Lifecycle States | ✅ Implemented | 7 states with valid transitions |
+| Allocation & Transfer | ✅ Implemented | Conflict detection + transfer workflow |
+| Resource Booking | ✅ Implemented | Calendar + overlap validation |
+| Maintenance Workflow | ✅ Implemented | Approval-based with technician assignment |
+| Asset Audits | ✅ Implemented | Cycle creation, item verification, discrepancy reports |
+| Reports & Analytics | ✅ Implemented | Utilization, maintenance frequency, allocation summary, booking heatmap |
+| Notifications & Activity Logs | ✅ Implemented | In-app notifications + complete audit trail |
+| Dashboard & KPIs | ✅ Implemented | Real-time KPI cards + overdue alerts |
+| File Uploads | ✅ Implemented | Asset photos, maintenance request attachments |
+| Overdue Detection | ✅ Implemented | Hourly background check + notifications |
+
+### Known Limitations (Out of Scope)
+- ❌ Purchasing / Procurement module
+- ❌ Invoicing / Financial integration
+- ❌ Advanced RBAC (nested roles, permission matrix)
+- ❌ Multi-tenancy (single organization per deployment)
+- ❌ API rate limiting
+- ❌ Email notifications (in-app only)
+- ❌ Mobile app (desktop/responsive web only)
+
+---
+
+## 🛠️ Development Guide
+
+### Frontend Development
+```bash
+cd frontend
+npm run dev          # Start Vite dev server on localhost:5173
+npm run build        # Build for production
+npm run preview      # Preview production build locally
+```
+
+### Backend Development
+```bash
+cd backend
+npm run dev          # Start with auto-reload
+npm run start        # Start production
+```
+
+### Adding a New Feature
+
+#### Backend
+1. Create model in `src/models/` (if needed)
+2. Create route in `src/routes/`
+3. Create controller in `src/controllers/`
+4. Update `src/server.js` to import and mount the new route
+
+#### Frontend
+1. Create page component in `src/pages/` (if new screen)
+2. Create service in `src/services/` for API calls
+3. Add route in `src/App.jsx`
+4. Add navigation link in `src/components/Sidebar.jsx`
+
+### Debugging
+- **Backend:** Check logs in terminal; MongoDB Atlas can view documents directly
+- **Frontend:** Use React DevTools browser extension; check network tab for API calls
+
+---
+
+## 🤝 Contributing
+
+This is a hackathon project. Contributions are welcome!
+
+### How to Contribute
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit changes (`git commit -m 'Add amazing feature'`)
+4. Push to branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
+
+### Code Style
+- **JavaScript:** ES6+, use `const`/`let`, avoid `var`
+- **React:** Functional components with hooks, JSX formatting via Prettier
+- **Backend:** Consistent error handling, meaningful variable names, comments for complex logic
+
+---
+
+## 📄 License
+
+TBD — Hackathon project. License to be determined after the event.
+
+---
+
+## 📞 Support
+
+### Troubleshooting
+
+**MongoDB Connection Error**
+- Check `MONGO_URI` in `.env`
+- Ensure MongoDB Atlas network access allows your IP
+- Verify username/password are correct
+
+**Frontend Can't Connect to Backend**
+- Ensure backend is running on port 5000
+- Check browser console for CORS errors
+- Verify Vite proxy config in `vite.config.js`
+
+**Asset Tag Not Auto-Generating**
+- Check `src/utils/assetTagGenerator.js`
+- Verify database connection
+- Restart backend server
+
+### Contact
+For questions or issues, please open a GitHub issue or contact the maintainers.
+
+---
+
+## 🎉 Acknowledgments
+
+Built for **Odoo Hackathon 2026 Problem Statement PS-01** with ❤️ by the AssetFlow team.
+
+Special thanks to:
+- Odoo for hosting the hackathon
+- MongoDB for the Atlas free tier
+- React and Node.js communities for amazing tools
+
+---
+
+**Happy Managing! 🚀**
