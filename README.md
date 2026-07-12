@@ -1,7 +1,7 @@
 # AssetFlow - Enterprise Asset & Resource Management System
-**Odoo Hackathon 2026**
+**Odoo Hackathon 2026 · Problem Statement PS-01**
 
-> A comprehensive ERP platform designed to simplify how organizations track, allocate, and maintain physical assets and shared resources without spreadsheets, paper logs, or accounting complexity.
+> Submission for enterprise asset & resource management — track, allocate, book, maintain, and audit organizational assets without spreadsheets or accounting complexity.
 
 ---
 
@@ -66,14 +66,14 @@ Organizations face critical challenges without a unified asset management system
 
 ### 1. **Authentication & Authorization**
 - Email and password-based authentication
-- Password reset and forgot password workflows
+- Forgot password / reset password (`/forgot-password`, `/reset-password`; dev mode shows reset link without email SMTP)
 - JWT-based session management with secure token validation
 - Role-based access control (Admin, Asset Manager, Department Head, Employee)
-- Automatic first-user admin promotion; subsequent signups as employees
+- Signup creates **Employee** only — first user in an empty database becomes Admin; role promotion is Admin-only via Organization Setup
 
 ### 2. **Dashboard & Analytics**
-- **KPI Cards:** Assets Available, Allocated, Under Maintenance, Active Bookings, Pending Transfers, Upcoming Returns
-- **Overdue Flags:** Separate highlighting for overdue returns vs. upcoming ones
+- **KPI Cards:** Assets Available, Assets Allocated, **Maintenance Today**, Active Bookings, Pending Transfers, Upcoming Returns
+- **Overdue vs upcoming:** Separate lists plus banner for overdue returns
 - **Quick Actions:** Register Asset, Book Resource, Raise Maintenance Request
 
 ### 3. **Organization Setup** *(Admin-only)*
@@ -98,10 +98,10 @@ Organizations face critical challenges without a unified asset management system
 - Calendar-based booking interface for shared resources
 - **Overlap Validation:** Rejects overlapping time slots (e.g., 9:00–10:00 blocks 9:30–10:30)
 - **Booking States:** Upcoming, Ongoing, Completed, Cancelled
-- **Management:** Cancel, reschedule, and receive reminder notifications before slot starts
+- **Cancel** upcoming bookings; conflict preview on the calendar before confirm
 
 ### 7. **Maintenance Management**
-- Raise requests with asset selection, issue description, priority, and photo attachments
+- Raise requests with asset selection, issue description, priority, and optional photo (multipart upload)
 - **Approval Workflow:** Pending → Approved/Rejected → Technician Assigned → In Progress → Resolved
 - **Automatic Status:** Asset marked as "Under Maintenance" on approval; reverts to "Available" on resolution
 - **History:** Full maintenance event log retained per asset
@@ -162,8 +162,7 @@ Organizations face critical challenges without a unified asset management system
 6. Frontend updates state and re-renders UI
 
 ### Async Jobs
-- **Overdue Checker:** Runs every hour to flag overdue allocations and trigger notifications
-- **Scheduled Audits:** Audit cycles can be scheduled and will notify assigned auditors
+- **Overdue Checker:** Runs on dashboard load and hourly — flags overdue allocations, advances booking statuses, stale maintenance alerts
 
 ---
 
@@ -197,109 +196,40 @@ Organizations face critical challenges without a unified asset management system
 ## 📁 Project Structure
 
 ```
-assetflow-odoo-hackathon26/
+assetflow/                           # clone folder (repo: assetflow-odoo-hackathon26)
 │
 ├── backend/                          # Express.js API Server
+│   ├── scripts/
+│   │   └── feature-test.mjs         # API integration smoke tests
 │   ├── src/
 │   │   ├── server.js                # Main Express app setup & MongoDB connection
-│   │   ├── models/                  # Mongoose schemas
-│   │   │   ├── User.js              # User with roles (Admin, AssetManager, DeptHead, Employee)
-│   │   │   ├── Department.js        # Department hierarchy, head assignment
-│   │   │   ├── AssetCategory.js     # Asset category with custom fields
-│   │   │   ├── Asset.js             # Core asset with lifecycle status
-│   │   │   ├── Allocation.js        # Asset allocation to user/department
-│   │   │   ├── TransferRequest.js   # Transfer workflow
-│   │   │   ├── Booking.js           # Resource booking with time slots
-│   │   │   ├── MaintenanceRequest.js# Maintenance workflow
-│   │   │   ├── AuditCycle.js        # Audit cycle definition
-│   │   │   ├── AuditItem.js         # Per-asset audit result
-│   │   │   ├── Notification.js      # In-app notifications
-│   │   │   └── ActivityLog.js       # Complete audit trail
-│   │   ├── controllers/             # Business logic layer
-│   │   │   ├── authController.js    # Signup, login, JWT handling
-│   │   │   ├── userController.js    # User management, role promotion
-│   │   │   ├── departmentController.js
-│   │   │   ├── categoryController.js
-│   │   │   ├── assetController.js   # Asset registration & directory
-│   │   │   ├── allocationController.js
-│   │   │   ├── transferController.js (implicit, in allocationController)
-│   │   │   ├── bookingController.js # Calendar, overlap validation
-│   │   │   ├── maintenanceController.js
-│   │   │   ├── auditController.js
-│   │   │   ├── dashboardController.js
-│   │   │   ├── reportController.js  # Analytics & reports
-│   │   │   ├── notificationController.js
+│   │   ├── models/                  # Mongoose schemas (User, Asset, Allocation, …)
+│   │   ├── controllers/             # Business logic (auth, assets, allocations, …)
 │   │   ├── routes/                  # Express route handlers
-│   │   │   ├── authRoutes.js
-│   │   │   ├── userRoutes.js
-│   │   │   ├── departmentRoutes.js
-│   │   │   ├── categoryRoutes.js
-│   │   │   ├── assetRoutes.js
-│   │   │   ├── allocationRoutes.js
-│   │   │   ├── transferRoutes.js
-│   │   │   ├── bookingRoutes.js
-│   │   │   ├── maintenanceRoutes.js
-│   │   │   ├── auditRoutes.js
-│   │   │   ├── dashboardRoutes.js
-│   │   │   ├── reportRoutes.js
-│   │   │   ├── notificationRoutes.js
-│   │   ├── middleware/              # Auth, file upload, error handling
-│   │   ├── utils/                   # Helper functions
-│   │   │   ├── overdueChecker.js    # Scheduled overdue detection
-│   │   │   ├── assetTagGenerator.js # Auto-generate AF-XXXX tags
-│   │   │   └── ... (other utilities)
-│   │   └── constants/               # Enums, valid states, role definitions
-│   ├── uploads/                     # Local file storage for asset photos/documents
-│   ├── .env.example                 # Environment variable template
-│   ├── .gitignore
-│   ├── package.json
-│   └── package-lock.json
+│   │   ├── middleware/              # JWT auth, Multer uploads
+│   │   ├── utils/                   # generateAssetTag, overdueChecker, bookingOverlap, …
+│   │   └── constants/               # businessRules.js (roles, error codes)
+│   ├── uploads/                     # Local file storage for asset/maintenance photos
+│   ├── .env.example
+│   └── package.json
 │
 ├── frontend/                        # React + Vite SPA
 │   ├── src/
-│   │   ├── main.jsx                # Application entry point
-│   │   ├── App.jsx                 # Main routing & layout
-│   │   ├── index.css               # Global styles
-│   │   ├── pages/                  # Screen components
-│   │   │   ├── Login.jsx
-│   │   │   ├── Signup.jsx
-│   │   │   ├── ForgotPassword.jsx
-│   │   │   ├── ResetPassword.jsx
-│   │   │   ├── Dashboard.jsx       # KPI cards, quick actions
-│   │   │   ├── OrganizationSetup.jsx # Admin: Depts, Categories, Employees
-│   │   │   ├── Assets.jsx          # Asset registry with search/filter
-│   │   │   ├── AssetDetail.jsx     # Single asset view + history
-│   │   │   ├── Allocations.jsx     # Allocation list & transfer requests
-│   │   │   ├── Bookings.jsx        # Calendar-based resource booking
-│   │   │   ├── Maintenance.jsx     # Maintenance requests & workflows
-│   │   │   ├── Audits.jsx          # Audit cycles & discrepancy reports
-│   │   │   ├── Reports.jsx         # Analytics & export
-│   │   │   └── Notifications.jsx   # Notification center & activity logs
-│   │   ├── components/             # Reusable UI components
-│   │   │   ├── Navbar.jsx
-│   │   │   ├── Sidebar.jsx
-│   │   │   ├── ... (other components)
-│   │   ├── context/                # React Context for auth state
-│   │   │   └── AuthContext.jsx
-│   │   ├── services/               # Axios API client wrappers
-│   │   │   ├── api.js              # Axios instance with token injection
-│   │   │   ├── authService.js
-│   │   │   ├── assetService.js
-│   │   │   └── ... (other services)
-│   │   ├── utils/                  # Helper functions, formatting, validation
-│   │   ├── config/                 # Configuration constants
-│   │   └── App.css
-│   ├── index.html
+│   │   ├── App.jsx                  # Routes + protected layout
+│   │   ├── pages/                   # Login, Dashboard, Assets, Allocations, …
+│   │   ├── components/              # Layout, Sidebar, AppHeader, Card, DataTable, …
+│   │   ├── config/branding.js       # VITE_ORG_NAME (organization header label)
+│   │   ├── context/AuthContext.jsx
+│   │   ├── services/api.js          # Axios client (JWT injection)
+│   │   └── utils/                   # navigation.js, roles.js
 │   ├── tailwind.config.js
-│   ├── vite.config.js
-│   ├── postcss.config.js
-│   ├── .gitignore
-│   ├── package.json
-│   └── package-lock.json
+│   └── vite.config.js               # Proxies /api and /uploads → :5000
 │
 ├── .gitignore
-└── README.md                        # This file
+└── README.md
 ```
+
+> Full tree: 10 frontend screens map 1:1 to PS-01 (Login/Signup, Dashboard, Organization Setup, Assets, Allocations, Bookings, Maintenance, Audits, Reports, Notifications).
 
 ### Key Design Decisions
 - **Separation of Concerns:** Controllers handle business logic, routes handle HTTP mapping, models define schemas
@@ -341,12 +271,14 @@ npm install
 cp .env.example .env
 ```
 
-Edit `.env` with your configuration:
+Edit `.env` with your configuration (see `backend/.env.example`):
 ```env
-MONGO_URI=mongodb+srv://username:password@cluster.mongodb.net/assetflow?retryWrites=true&w=majority
+MONGO_URI=mongodb://username:password@host1:27017,host2:27017/assetflow?ssl=true&authSource=admin&retryWrites=true&w=majority
 JWT_SECRET=your_super_secret_jwt_key_min_32_chars
 PORT=5000
 ```
+
+**Windows note:** If `mongodb+srv://` fails with `querySrv ECONNREFUSED`, use the standard `mongodb://` connection string from Atlas (Connect → Drivers).
 
 **Where to get MONGO_URI:**
 1. Go to [MongoDB Atlas](https://www.mongodb.com/cloud/atlas)
@@ -380,7 +312,14 @@ cd frontend
 npm install
 ```
 
-#### 3.3 Start the Development Server
+#### 3.3 Optional: Organization name in header
+Create `frontend/.env` (optional):
+```env
+VITE_ORG_NAME=Your Organization Name
+```
+Defaults to `NovaTech Industries` if unset. Restart Vite after changing.
+
+#### 3.4 Start the Development Server
 ```bash
 npm run dev
 ```
@@ -430,18 +369,17 @@ http://localhost:5000/api
 ```
 
 ### Authentication
-All endpoints (except `/auth/signup` and `/auth/login`) require a JWT token in the `Authorization` header:
-```
-Authorization: Bearer <your_jwt_token>
-```
+All protected endpoints require `Authorization: Bearer <token>`. Public: `/auth/signup`, `/auth/login`, `/auth/forgot-password`, `/auth/reset-password`.
 
 ### Endpoints
 
 #### **Authentication**
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| POST | `/auth/signup` | Register a new user (Employee by default, first user becomes Admin) |
+| POST | `/auth/signup` | Register (Employee; first user → Admin). Rejects `role` in body |
 | POST | `/auth/login` | Login and receive JWT token |
+| POST | `/auth/forgot-password` | Request password reset token |
+| POST | `/auth/reset-password` | Set new password with token |
 | GET | `/auth/me` | Get current user info (requires JWT) |
 
 #### **Organization**
@@ -489,9 +427,10 @@ Authorization: Bearer <your_jwt_token>
 |--------|----------|-------------|
 | GET | `/maintenance` | List all maintenance requests |
 | POST | `/maintenance` | Raise new maintenance request |
-| POST | `/maintenance/:id/approve` | Approve or reject request (AssetManager; sets asset to "Under Maintenance") |
-| POST | `/maintenance/:id/assign-technician` | Assign technician and start work |
-| POST | `/maintenance/:id/resolve` | Mark resolved (reverts asset to "Available") |
+| POST | `/maintenance/:id/approve` | Approve or reject (Asset Manager) |
+| POST | `/maintenance/:id/assign-technician` | Assign technician → Technician Assigned |
+| POST | `/maintenance/:id/start` | Move to In Progress |
+| POST | `/maintenance/:id/resolve` | Mark resolved (asset → Available) |
 
 #### **Audits**
 | Method | Endpoint | Description |
@@ -510,7 +449,8 @@ Authorization: Bearer <your_jwt_token>
 | GET | `/reports/utilization` | Asset utilization trends + idle asset identification |
 | GET | `/reports/maintenance-frequency` | Maintenance count by category |
 | GET | `/reports/allocation-summary` | Allocations by department |
-| GET | `/reports/booking-heatmap` | Resource booking peak hours |
+| GET | `/reports/booking-heatmap` | Resource booking peak hours + most-used assets |
+| GET | `/reports/maintenance-alerts` | Pending maintenance + aging assets |
 
 #### **Notifications**
 | Method | Endpoint | Description |
@@ -606,9 +546,8 @@ Step 1: Employee navigates to Bookings, selects Conference Room A
 Step 2: Calendar shows existing bookings (9:00–10:00 AM, 2:00–3:00 PM)
 Step 3: Employee tries to book 9:30–10:30 AM
 Step 4: System rejects: "Overlaps with existing booking 9:00–10:00 AM"
-Step 5: Employee reschedules to 10:00–11:00 AM
-Step 6: System accepts (no overlap; exactly after previous booking)
-Step 7: Booking confirmed; reminder notification 15 mins before slot
+Step 5: Employee books 10:00–11:00 AM instead (no overlap)
+Step 6: System accepts and confirms booking
 
 Result: No double-bookings; smooth resource utilization
 ```
@@ -660,7 +599,7 @@ Result: Accurate inventory; auto-flagged discrepancies; full accountability
 
 ## 📊 Project Status
 
-> **Status:** Hackathon build in progress — incremental commits pushed throughout the event.
+> **Status:** Hackathon submission for Odoo Hackathon 2026 PS-01 — core PS-01 screens and business rules implemented.
 
 ### Implementation Checklist
 
@@ -676,18 +615,19 @@ Result: Accurate inventory; auto-flagged discrepancies; full accountability
 | Asset Audits | ✅ Implemented | Cycle creation, item verification, discrepancy reports |
 | Reports & Analytics | ✅ Implemented | Utilization, maintenance frequency, allocation summary, booking heatmap |
 | Notifications & Activity Logs | ✅ Implemented | In-app notifications + complete audit trail |
-| Dashboard & KPIs | ✅ Implemented | Real-time KPI cards + overdue alerts |
+| Dashboard & KPIs | ✅ Implemented | Maintenance Today KPI, overdue/upcoming lists, quick actions |
+| Forgot / Reset Password | ✅ Implemented | Token-based; dev mode reset link (no SMTP) |
 | File Uploads | ✅ Implemented | Asset photos, maintenance request attachments |
 | Overdue Detection | ✅ Implemented | Hourly background check + notifications |
 
-### Known Limitations (Out of Scope)
+### Known Limitations (Out of Scope / Partial)
 - ❌ Purchasing / Procurement module
 - ❌ Invoicing / Financial integration
-- ❌ Advanced RBAC (nested roles, permission matrix)
 - ❌ Multi-tenancy (single organization per deployment)
-- ❌ API rate limiting
-- ❌ Email notifications (in-app only)
-- ❌ Mobile app (desktop/responsive web only)
+- ❌ Email notifications (in-app only; password reset uses dev reset link)
+- ⚠️ Booking reschedule & pre-slot reminder notifications — not implemented
+- ⚠️ QR code field — search UI placeholder only (tag/serial/name search works)
+- ⚠️ Department-scoped audit cycles need assets allocated to that department to populate items
 
 ---
 
@@ -704,8 +644,9 @@ npm run preview      # Preview production build locally
 ### Backend Development
 ```bash
 cd backend
-npm run dev          # Start with auto-reload
-npm run start        # Start production
+npm run dev          # Start with auto-reload (node --watch)
+npm start            # Production
+node scripts/feature-test.mjs   # API smoke tests (server must be running)
 ```
 
 ### Adding a New Feature
@@ -718,9 +659,8 @@ npm run start        # Start production
 
 #### Frontend
 1. Create page component in `src/pages/` (if new screen)
-2. Create service in `src/services/` for API calls
-3. Add route in `src/App.jsx`
-4. Add navigation link in `src/components/Sidebar.jsx`
+2. Use `src/services/api.js` for API calls
+3. Add route in `src/App.jsx` and nav entry in `src/utils/navigation.js` (role-gated)
 
 ### Debugging
 - **Backend:** Check logs in terminal; MongoDB Atlas can view documents directly
@@ -767,7 +707,7 @@ TBD — Hackathon project. License to be determined after the event.
 - Verify Vite proxy config in `vite.config.js`
 
 **Asset Tag Not Auto-Generating**
-- Check `src/utils/assetTagGenerator.js`
+- Check `backend/src/utils/generateAssetTag.js`
 - Verify database connection
 - Restart backend server
 
