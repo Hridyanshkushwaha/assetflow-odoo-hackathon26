@@ -1,5 +1,5 @@
 # AssetFlow - Enterprise Asset & Resource Management System
-**Odoo Hackathon 2026 PS-01**
+**Odoo Hackathon 2026**
 
 > A comprehensive ERP platform designed to simplify how organizations track, allocate, and maintain physical assets and shared resources without spreadsheets, paper logs, or accounting complexity.
 
