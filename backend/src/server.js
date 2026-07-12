@@ -50,13 +50,26 @@ app.use((err, _req, res, _next) => {
   res.status(500).json({ message: err.message || 'Server error' });
 });
 
-mongoose
-  .connect(process.env.MONGO_URI)
+const connectDB = async () => {
+  const uri = process.env.MONGO_URI;
+  if (!uri) throw new Error('MONGO_URI is not set in .env');
+
+  await mongoose.connect(uri, {
+    serverSelectionTimeoutMS: 10000,
+  });
+  console.log('MongoDB connected');
+};
+
+connectDB()
   .then(() => {
-    console.log('MongoDB connected');
     app.listen(PORT, () => console.log(`AssetFlow API running on port ${PORT}`));
   })
   .catch((err) => {
     console.error('MongoDB connection error:', err.message);
+    if (err.message.includes('querySrv')) {
+      console.error(
+        'Tip: Replace mongodb+srv:// with the standard mongodb:// URI from MongoDB Atlas (Connect → Drivers).'
+      );
+    }
     process.exit(1);
   });
