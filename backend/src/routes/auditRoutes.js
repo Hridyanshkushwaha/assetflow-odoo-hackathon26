@@ -3,7 +3,7 @@ import {
   getAuditCycles,
   getAuditCycle,
   createAuditCycle,
-  verifyAuditItem,
+  submitAuditItem,
   closeAuditCycle,
   getDiscrepancyReport,
 } from '../controllers/auditController.js';
@@ -16,7 +16,7 @@ router.get('/', getAuditCycles);
 router.get('/:id/discrepancies', getDiscrepancyReport);
 router.get('/:id', getAuditCycle);
 router.post('/', authorize('Admin'), createAuditCycle);
-router.put('/:id/items/:itemId', verifyAuditItem);
-router.put('/:id/close', authorize('Admin', 'AssetManager'), closeAuditCycle);
+router.post('/:id/items', submitAuditItem);
+router.post('/:id/close', authorize('Admin', 'AssetManager'), closeAuditCycle);
 
 export default router;

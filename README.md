@@ -289,22 +289,80 @@ PORT=5000
 
 ---
 
-## API Endpoints
+## API Routes
 
-| Module | Base Path |
-|---|---|
-| Auth | `/api/auth` |
-| Departments | `/api/departments` |
-| Categories | `/api/categories` |
-| Employees | `/api/employees` |
-| Assets | `/api/assets` |
-| Allocations | `/api/allocations` |
-| Bookings | `/api/bookings` |
-| Maintenance | `/api/maintenance` |
-| Audits | `/api/audits` |
-| Dashboard | `/api/dashboard` |
-| Reports | `/api/reports` |
-| Notifications | `/api/notifications` |
+### Auth
+| Method | Route | Description |
+|---|---|---|
+| POST | `/api/auth/signup` | Register (Employee only; first user = Admin) |
+| POST | `/api/auth/login` | Login |
+| GET | `/api/auth/me` | Current user (JWT) |
+
+### Organization
+| Method | Route | Description |
+|---|---|---|
+| GET/POST/PUT | `/api/departments` | List, create, update departments (Admin write) |
+| GET/POST/PUT | `/api/categories` | List, create, update categories (Admin write) |
+| GET/PUT | `/api/users` | List users; Admin update department, status, promote role |
+
+### Assets
+| Method | Route | Description |
+|---|---|---|
+| GET/POST/PUT | `/api/assets` | List, register, update assets |
+| GET | `/api/assets/bookable` | List bookable resources |
+| GET | `/api/assets/:id` | Single asset |
+| GET | `/api/assets/:id/history` | Allocation + maintenance history |
+
+### Allocations & Transfers
+| Method | Route | Description |
+|---|---|---|
+| GET/POST | `/api/allocations` | List / create allocation |
+| POST | `/api/allocations/:id/return` | Return asset |
+| GET/POST | `/api/transfers` | List / request transfer |
+| POST | `/api/transfers/:id/approve` | Approve or reject transfer |
+
+### Bookings
+| Method | Route | Description |
+|---|---|---|
+| GET/POST | `/api/bookings` | List / create booking |
+| POST | `/api/bookings/:id/cancel` | Cancel booking |
+| GET | `/api/bookings/calendar/:resourceId` | Resource calendar |
+
+### Maintenance
+| Method | Route | Description |
+|---|---|---|
+| GET/POST | `/api/maintenance` | List / raise request |
+| POST | `/api/maintenance/:id/approve` | Approve or reject (`{ approved: true/false }`) |
+| POST | `/api/maintenance/:id/assign-technician` | Assign technician & start work |
+| POST | `/api/maintenance/:id/resolve` | Mark resolved |
+
+### Audits
+| Method | Route | Description |
+|---|---|---|
+| GET/POST | `/api/audits` | List / create audit cycle |
+| GET | `/api/audits/:id` | Cycle detail + items |
+| POST | `/api/audits/:id/items` | Submit item result (`{ itemId, result, notes }`) |
+| POST | `/api/audits/:id/close` | Close cycle + discrepancy report |
+| GET | `/api/audits/:id/discrepancies` | Discrepancy report |
+
+### Dashboard & Reports
+| Method | Route | Description |
+|---|---|---|
+| GET | `/api/dashboard/kpis` | KPI dashboard + overdue flags |
+| GET | `/api/reports/utilization` | Asset utilization & idle assets |
+| GET | `/api/reports/maintenance-frequency` | Maintenance by category |
+| GET | `/api/reports/allocation-summary` | Allocations by department |
+| GET | `/api/reports/booking-heatmap` | Booking peak hours |
+
+### Notifications
+| Method | Route | Description |
+|---|---|---|
+| GET | `/api/notifications` | User notifications |
+| PUT | `/api/notifications/:id/read` | Mark one read |
+| PUT | `/api/notifications/read-all` | Mark all read |
+| GET | `/api/notifications/activity-logs` | Activity log (Admin/AssetManager) |
+
+Health check: `GET /api/health`
 
 ---
 

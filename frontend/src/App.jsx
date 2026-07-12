@@ -3,9 +3,12 @@ import Layout from './components/Layout';
 import ProtectedRoute from './components/ProtectedRoute';
 import Login from './pages/Login';
 import Signup from './pages/Signup';
+import ForgotPassword from './pages/ForgotPassword';
+import ResetPassword from './pages/ResetPassword';
 import Dashboard from './pages/Dashboard';
 import OrganizationSetup from './pages/OrganizationSetup';
 import Assets from './pages/Assets';
+import AssetDetail from './pages/AssetDetail';
 import Allocations from './pages/Allocations';
 import Bookings from './pages/Bookings';
 import Maintenance from './pages/Maintenance';
@@ -19,6 +22,8 @@ export default function App() {
     <Routes>
       <Route path="/login" element={<Login />} />
       <Route path="/signup" element={<Signup />} />
+      <Route path="/forgot-password" element={<ForgotPassword />} />
+      <Route path="/reset-password" element={<ResetPassword />} />
       <Route
         element={
           <ProtectedRoute>
@@ -29,6 +34,7 @@ export default function App() {
         <Route index element={<Dashboard />} />
         <Route path="organization" element={<ProtectedRoute roles={[ROLES.ADMIN]}><OrganizationSetup /></ProtectedRoute>} />
         <Route path="assets" element={<Assets />} />
+        <Route path="assets/:id" element={<AssetDetail />} />
         <Route path="allocations" element={<Allocations />} />
         <Route path="bookings" element={<Bookings />} />
         <Route path="maintenance" element={<Maintenance />} />

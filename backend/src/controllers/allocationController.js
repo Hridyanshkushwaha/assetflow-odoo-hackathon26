@@ -131,6 +131,7 @@ export const requestTransfer = async (req, res) => {
       toHolder,
       requestedBy: req.user._id,
       status: 'Requested',
+      reason: req.body.reason,
     });
 
     await logActivity(req.user._id, 'request_transfer', 'TransferRequest', transfer._id);

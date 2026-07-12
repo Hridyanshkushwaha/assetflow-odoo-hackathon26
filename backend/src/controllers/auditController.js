@@ -89,7 +89,7 @@ export const createAuditCycle = async (req, res) => {
   }
 };
 
-export const verifyAuditItem = async (req, res) => {
+export const submitAuditItem = async (req, res) => {
   try {
     const cycle = await AuditCycle.findById(req.params.id);
     if (!cycle) return res.status(404).json({ message: 'Audit cycle not found' });
@@ -106,25 +106,26 @@ export const verifyAuditItem = async (req, res) => {
       return res.status(403).json({ message: 'Only assigned auditors can submit audit results' });
     }
 
+    const { itemId, result, notes } = req.body;
     const validResults = ['Verified', 'Missing', 'Damaged'];
-    if (!validResults.includes(req.body.result)) {
-      return res.status(400).json({ message: 'Invalid audit result' });
+    if (!itemId || !validResults.includes(result)) {
+      return res.status(400).json({ message: 'itemId and valid result are required' });
     }
 
     const item = await AuditItem.findOneAndUpdate(
-      { _id: req.params.itemId, auditCycle: cycle._id },
-      { result: req.body.result, notes: req.body.notes },
+      { _id: itemId, auditCycle: cycle._id },
+      { result, notes },
       { new: true }
     ).populate('asset', 'name assetTag');
 
     if (!item) return res.status(404).json({ message: 'Audit item not found' });
 
-    if (['Missing', 'Damaged'].includes(req.body.result)) {
+    if (['Missing', 'Damaged'].includes(result)) {
       for (const auditorId of cycle.auditors) {
         await createNotification(
           auditorId,
           'audit_discrepancy',
-          `Discrepancy flagged: ${req.body.result} — ${item.asset?.assetTag}`
+          `Discrepancy flagged: ${result} — ${item.asset?.assetTag}`
         );
       }
     }

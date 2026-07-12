@@ -7,7 +7,7 @@ import { createNotification } from './notifications.js';
 
 async function resolveHolder(allocation) {
   if (allocation.allocatedToType === 'User') {
-    return User.findById(allocation.allocatedTo).select('name email');
+    return User.findById(allocation.allocatedTo).select('name email department').populate('department', 'name');
   }
   if (allocation.allocatedToType === 'Department') {
     return Department.findById(allocation.allocatedTo).select('name code');

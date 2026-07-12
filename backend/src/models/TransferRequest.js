@@ -12,6 +12,7 @@ const transferRequestSchema = new mongoose.Schema(
       default: 'Requested',
     },
     approvedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    reason: { type: String, trim: true },
   },
   { timestamps: true }
 );

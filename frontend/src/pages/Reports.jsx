@@ -1,83 +1,132 @@
-import { useEffect, useState } from 'react';
-import api from '../services/api';
-import LoadingSpinner from '../components/LoadingSpinner';
-
-function BarChart({ data, labelKey = '_id', valueKey = 'count' }) {
-  const max = Math.max(...data.map((d) => d[valueKey]), 1);
-  return (
-    <div className="space-y-2">
-      {data.map((d) => (
-        <div key={d[labelKey] || 'unknown'} className="flex items-center gap-3">
-          <span className="w-28 truncate text-sm capitalize">{d[labelKey] || 'Unknown'}</span>
-          <div className="flex-1 rounded-full bg-slate-100">
-            <div
-              className="rounded-full bg-primary-500 py-1 text-center text-xs text-white"
-              style={{ width: `${(d[valueKey] / max) * 100}%`, minWidth: d[valueKey] ? '2rem' : 0 }}
-            >
-              {d[valueKey]}
-            </div>
-          </div>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-export default function Reports() {
-  const [data, setData] = useState(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    api.get('/reports')
-      .then((res) => setData(res.data))
-      .catch(console.error)
-      .finally(() => setLoading(false));
-  }, []);
-
-  if (loading) return <LoadingSpinner />;
-
-  return (
-    <div>
-      <h1 className="mb-2 text-2xl font-bold">Reports & Analytics</h1>
-      <p className="mb-6 text-slate-500">Operational insights for managers</p>
-
-      <div className="grid gap-6 lg:grid-cols-2">
-        <div className="rounded-xl border bg-white p-6">
-          <h2 className="mb-4 font-semibold">Assets by Status</h2>
-          <BarChart data={data?.assetsByStatus || []} />
-        </div>
-        <div className="rounded-xl border bg-white p-6">
-          <h2 className="mb-4 font-semibold">Assets by Category</h2>
-          <BarChart data={data?.assetsByCategory || []} />
-        </div>
-        <div className="rounded-xl border bg-white p-6">
-          <h2 className="mb-4 font-semibold">Allocations by Department</h2>
-          <BarChart data={data?.allocationsByDepartment || []} />
-        </div>
-        <div className="rounded-xl border bg-white p-6">
-          <h2 className="mb-4 font-semibold">Maintenance by Category</h2>
-          <BarChart data={data?.maintenanceByCategory || []} />
-        </div>
-        <div className="rounded-xl border bg-white p-6 lg:col-span-2">
-          <h2 className="mb-4 font-semibold">Booking Heatmap (by hour)</h2>
-          <BarChart data={data?.bookingHeatmap || []} labelKey="_id" />
-        </div>
-        <div className="rounded-xl border bg-white p-6 lg:col-span-2">
-          <h2 className="mb-4 font-semibold">Idle Assets (90+ days available)</h2>
-          {data?.idleAssets?.length === 0 ? (
-            <p className="text-sm text-slate-500">No idle assets detected</p>
-          ) : (
-            <ul className="grid gap-2 md:grid-cols-2">
-              {data?.idleAssets?.map((a) => (
-                <li key={a._id} className="rounded-lg bg-slate-50 p-3 text-sm">
-                  <span className="font-mono">{a.assetTag}</span> — {a.name}
-                  <span className="ml-2 text-slate-400">({a.category?.name})</span>
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-}
+import { useEffect, useState } from 'react';
+import api from '../services/api';
+import Card, { CardHeader } from '../components/Card';
+import PageHeader from '../components/PageHeader';
+import LoadingSpinner from '../components/LoadingSpinner';
+import { Button } from '../components/ui';
+
+function BarChart({ data, labelKey = '_id', color = 'bg-amber-500' }) {
+  const max = Math.max(...(data || []).map((d) => d.count), 1);
+  if (!data?.length) return <p className="text-sm text-slate-500">No data available</p>;
+
+  return (
+    <div className="flex h-48 items-end gap-2">
+      {data.map((d) => (
+        <div key={d[labelKey]} className="flex flex-1 flex-col items-center gap-2">
+          <div className={`w-full rounded-t-lg ${color}`} style={{ height: `${(d.count / max) * 100}%`, minHeight: '4px' }} title={`${d.count}`} />
+          <span className="max-w-full truncate text-[10px] text-slate-500">{d[labelKey]}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function LineChart({ data }) {
+  if (!data?.length) return <p className="text-sm text-slate-500">No data available</p>;
+  const max = Math.max(...data.map((d) => d.count), 1);
+  const points = data.map((d, i) => {
+    const x = (i / Math.max(data.length - 1, 1)) * 100;
+    const y = 100 - (d.count / max) * 100;
+    return `${x},${y}`;
+  }).join(' ');
+
+  return (
+    <svg viewBox="0 0 100 100" className="h-48 w-full" preserveAspectRatio="none">
+      <polyline fill="none" stroke="#ef4444" strokeWidth="2" points={points} />
+    </svg>
+  );
+}
+
+export default function Reports() {
+  const [data, setData] = useState({});
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    Promise.all([
+      api.get('/reports/utilization'),
+      api.get('/reports/maintenance-frequency'),
+      api.get('/reports/booking-heatmap'),
+      api.get('/reports/maintenance-alerts'),
+    ]).then(([u, m, h, alerts]) => setData({ u: u.data, m: m.data, h: h.data, alerts: alerts.data }))
+      .finally(() => setLoading(false));
+  }, []);
+
+  const handleExport = () => {
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'assetflow-report.json';
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  if (loading) return <LoadingSpinner />;
+
+  return (
+    <div>
+      <PageHeader title="Reports & Analytics" subtitle="Operational insights for managers" />
+
+      <div className="mb-6 grid gap-6 lg:grid-cols-2">
+        <Card>
+          <CardHeader title="Utilization by Department" />
+          <BarChart data={data.u?.utilizationByDepartment} color="bg-amber-600/80" />
+        </Card>
+        <Card>
+          <CardHeader title="Maintenance Frequency" />
+          <LineChart data={data.m?.maintenanceTrend} />
+        </Card>
+      </div>
+
+      <div className="mb-6 grid gap-6 lg:grid-cols-2">
+        <Card>
+          <CardHeader title="Most Used Assets" subtitle="Last 30 days" />
+          <ul className="space-y-3 text-sm">
+            {(data.h?.mostUsedAssets || []).length === 0 ? (
+              <li className="text-slate-500">No booking data yet</li>
+            ) : data.h.mostUsedAssets.map((a) => (
+              <li key={a._id} className="flex justify-between rounded-lg bg-slate-50 px-4 py-2">
+                <span>{a._id}{a.assetTag ? ` ${a.assetTag}` : ''}</span>
+                <span className="text-slate-500">{a.count} bookings</span>
+              </li>
+            ))}
+          </ul>
+        </Card>
+        <Card>
+          <CardHeader title="Idle Assets" subtitle="Unused 45+ days" />
+          <ul className="space-y-3 text-sm">
+            {(data.u?.idleAssets || []).length === 0 ? (
+              <li className="text-slate-500">No idle assets flagged</li>
+            ) : data.u.idleAssets.map((a) => (
+              <li key={a._id} className="flex justify-between rounded-lg bg-slate-50 px-4 py-2">
+                <span>{a.name} {a.assetTag}</span>
+                <span className="text-slate-500">unused 45+ days</span>
+              </li>
+            ))}
+          </ul>
+        </Card>
+      </div>
+
+      <Card className="mb-6">
+        <CardHeader title="Assets Due for Maintenance / Nearing Retirement" />
+        <ul className="space-y-3 text-sm">
+          {(data.alerts?.pendingMaintenance || []).slice(0, 3).map((m) => (
+            <li key={m._id} className="rounded-lg bg-slate-50 px-4 py-2">
+              {m.asset?.name} {m.asset?.assetTag}: service pending ({m.status})
+            </li>
+          ))}
+          {(data.alerts?.agingAssets || []).slice(0, 3).map((a) => (
+            <li key={a._id} className="rounded-lg bg-slate-50 px-4 py-2">
+              {a.name} {a.assetTag}: 4+ years old — nearing retirement
+            </li>
+          ))}
+          {!data.alerts?.pendingMaintenance?.length && !data.alerts?.agingAssets?.length && (
+            <li className="text-slate-500">No alerts at this time</li>
+          )}
+        </ul>
+      </Card>
+
+      <Button variant="secondary" onClick={handleExport}>Export Report</Button>
+    </div>
+  );
+}

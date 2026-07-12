@@ -1,117 +1,284 @@
 import { useEffect, useState } from 'react';
+
+import { useNavigate } from 'react-router-dom';
+
 import api from '../services/api';
+
 import { useAuth } from '../context/AuthContext';
+
 import { canRegisterAssets } from '../utils/roles';
+
+import Card from '../components/Card';
+
+import PageHeader from '../components/PageHeader';
+
+import DataTable from '../components/DataTable';
+
+import Modal from '../components/Modal';
+
 import StatusBadge from '../components/StatusBadge';
+
 import LoadingSpinner from '../components/LoadingSpinner';
 
+import { Button, Input, Select, Label } from '../components/ui';
+
+
+
 export default function Assets() {
+
   const { user } = useAuth();
+
+  const navigate = useNavigate();
+
   const [assets, setAssets] = useState([]);
+
   const [categories, setCategories] = useState([]);
+
+  const [departments, setDepartments] = useState([]);
+
   const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState('');
+
+  const [filters, setFilters] = useState({ search: '', status: '', category: '', location: '' });
+
   const [showForm, setShowForm] = useState(false);
+
   const [form, setForm] = useState({
+
     name: '', category: '', serialNumber: '', location: '', condition: 'Good', isBookable: false,
+
   });
 
+
+
   const load = async () => {
+
     setLoading(true);
+
     try {
-      const [a, c] = await Promise.all([
-        api.get('/assets', { params: search ? { search } : {} }),
+
+      const params = {};
+
+      if (filters.search) params.search = filters.search;
+
+      if (filters.status) params.status = filters.status;
+
+      if (filters.category) params.category = filters.category;
+
+      if (filters.location) params.location = filters.location;
+
+      const [a, c, d] = await Promise.all([
+
+        api.get('/assets', { params }),
+
         api.get('/categories'),
+
+        api.get('/departments'),
+
       ]);
+
       setAssets(a.data);
+
       setCategories(c.data);
+
+      setDepartments(d.data);
+
     } catch (err) {
+
       console.error(err);
+
     } finally {
+
       setLoading(false);
+
     }
+
   };
+
+
 
   useEffect(() => { load(); }, []);
 
+
+
   const handleCreate = async (e) => {
+
     e.preventDefault();
+
     const fd = new FormData();
+
     Object.entries(form).forEach(([k, v]) => fd.append(k, v));
+
     await api.post('/assets', fd, { headers: { 'Content-Type': 'multipart/form-data' } });
+
     setShowForm(false);
+
     setForm({ name: '', category: '', serialNumber: '', location: '', condition: 'Good', isBookable: false });
+
     load();
+
   };
 
-  if (loading) return <LoadingSpinner />;
+
+
+  if (loading && assets.length === 0) return <LoadingSpinner />;
+
+
 
   return (
+
     <div>
-      <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold">Asset Directory</h1>
-          <p className="text-slate-500">Register and track all organizational assets</p>
-        </div>
-        {canRegisterAssets(user?.role) && (
-          <button onClick={() => setShowForm(!showForm)} className="rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-white">
-            {showForm ? 'Cancel' : 'Register Asset'}
-          </button>
-        )}
-      </div>
 
-      <form onSubmit={(e) => { e.preventDefault(); load(); }} className="mb-6 flex gap-2">
-        <input placeholder="Search by tag, serial, or name..." value={search} onChange={(e) => setSearch(e.target.value)} className="flex-1 rounded-lg border px-3 py-2" />
-        <button type="submit" className="rounded-lg border px-4 py-2 text-sm">Search</button>
-      </form>
+      <PageHeader
 
-      {showForm && (
-        <form onSubmit={handleCreate} className="mb-6 rounded-xl border bg-white p-6">
-          <h2 className="mb-4 font-semibold">Register New Asset</h2>
-          <div className="grid gap-4 md:grid-cols-2">
-            <input placeholder="Asset name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="rounded-lg border px-3 py-2" required />
-            <select value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })} className="rounded-lg border px-3 py-2" required>
-              <option value="">Select category</option>
-              {categories.map((c) => <option key={c._id} value={c._id}>{c.name}</option>)}
-            </select>
-            <input placeholder="Serial number" value={form.serialNumber} onChange={(e) => setForm({ ...form, serialNumber: e.target.value })} className="rounded-lg border px-3 py-2" />
-            <input placeholder="Location" value={form.location} onChange={(e) => setForm({ ...form, location: e.target.value })} className="rounded-lg border px-3 py-2" />
-            <input placeholder="Condition" value={form.condition} onChange={(e) => setForm({ ...form, condition: e.target.value })} className="rounded-lg border px-3 py-2" />
-            <label className="flex items-center gap-2">
-              <input type="checkbox" checked={form.isBookable} onChange={(e) => setForm({ ...form, isBookable: e.target.checked })} />
-              <span className="text-sm">Shared / Bookable resource</span>
-            </label>
-          </div>
-          <button type="submit" className="mt-4 rounded-lg bg-primary-600 px-4 py-2 text-sm text-white">Register</button>
-        </form>
-      )}
+        title="Asset Registration & Directory"
 
-      <div className="overflow-x-auto rounded-xl border bg-white">
-        <table className="w-full text-left text-sm">
-          <thead>
-            <tr className="border-b bg-slate-50 text-slate-500">
-              <th className="p-4">Tag</th>
-              <th className="p-4">Name</th>
-              <th className="p-4">Category</th>
-              <th className="p-4">Location</th>
-              <th className="p-4">Status</th>
-              <th className="p-4">Bookable</th>
-            </tr>
-          </thead>
-          <tbody>
-            {assets.map((a) => (
-              <tr key={a._id} className="border-b border-slate-100 hover:bg-slate-50">
-                <td className="p-4 font-mono font-medium">{a.assetTag}</td>
-                <td className="p-4">{a.name}</td>
-                <td className="p-4">{a.category?.name}</td>
-                <td className="p-4">{a.location || '—'}</td>
-                <td className="p-4"><StatusBadge status={a.status} /></td>
-                <td className="p-4">{a.isBookable ? 'Yes' : 'No'}</td>
-              </tr>
+        subtitle="Search, filter, and register assets"
+
+        action={
+
+          canRegisterAssets(user?.role) && (
+
+            <Button onClick={() => setShowForm(true)}>+ Register Asset</Button>
+
+          )
+
+        }
+
+      />
+
+
+
+      <Card className="mb-6">
+
+        <div className="grid gap-3 md:grid-cols-[1fr_auto_auto_auto]">
+
+          <Input
+
+            placeholder="Search by tag, serial, or QR code.."
+
+            value={filters.search}
+
+            onChange={(e) => setFilters({ ...filters, search: e.target.value })}
+
+          />
+
+          <Select value={filters.category} onChange={(e) => setFilters({ ...filters, category: e.target.value })}>
+
+            <option value="">Category</option>
+
+            {categories.map((c) => <option key={c._id} value={c._id}>{c.name}</option>)}
+
+          </Select>
+
+          <Select value={filters.status} onChange={(e) => setFilters({ ...filters, status: e.target.value })}>
+
+            <option value="">Status</option>
+
+            {['Available', 'Allocated', 'UnderMaintenance', 'Reserved', 'Lost', 'Retired'].map((s) => (
+
+              <option key={s} value={s}>{s.replace(/([A-Z])/g, ' $1').trim()}</option>
+
             ))}
-          </tbody>
-        </table>
-      </div>
+
+          </Select>
+
+          <Select value={filters.location} onChange={(e) => setFilters({ ...filters, location: e.target.value })}>
+
+            <option value="">Department / Location</option>
+
+            {departments.map((d) => <option key={d._id} value={d.name}>{d.name}</option>)}
+
+          </Select>
+
+        </div>
+
+        <div className="mt-3 flex justify-end">
+
+          <Button variant="secondary" onClick={load}>Apply Filters</Button>
+
+        </div>
+
+      </Card>
+
+
+
+      <Card padding={false}>
+
+        <DataTable
+
+          columns={[
+
+            { key: 'tag', label: 'Tag', render: (r) => <span className="font-mono font-medium text-primary-600">{r.assetTag}</span> },
+
+            { key: 'name', label: 'Name', render: (r) => r.name },
+
+            { key: 'category', label: 'Category', render: (r) => r.category?.name || '—' },
+
+            { key: 'status', label: 'Status', render: (r) => <StatusBadge status={r.status} /> },
+
+            { key: 'location', label: 'Location', render: (r) => r.location || '—' },
+
+          ]}
+
+          rows={assets.map((a) => ({ ...a, id: a._id }))}
+
+          onRowClick={(row) => navigate(`/assets/${row.id}`)}
+
+          emptyMessage="No assets match your filters"
+
+        />
+
+      </Card>
+
+
+
+      <Modal open={showForm} title="Register New Asset" onClose={() => setShowForm(false)}>
+
+        <form onSubmit={handleCreate} className="space-y-4">
+
+          <div><Label>Asset Name</Label><Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required /></div>
+
+          <div>
+
+            <Label>Category</Label>
+
+            <Select value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })} required>
+
+              <option value="">Select category</option>
+
+              {categories.map((c) => <option key={c._id} value={c._id}>{c.name}</option>)}
+
+            </Select>
+
+          </div>
+
+          <div><Label>Serial Number</Label><Input value={form.serialNumber} onChange={(e) => setForm({ ...form, serialNumber: e.target.value })} /></div>
+
+          <div><Label>Location</Label><Input value={form.location} onChange={(e) => setForm({ ...form, location: e.target.value })} /></div>
+
+          <label className="flex items-center gap-2">
+
+            <input type="checkbox" checked={form.isBookable} onChange={(e) => setForm({ ...form, isBookable: e.target.checked })} className="rounded" />
+
+            <span className="text-sm text-slate-700">Shared / bookable resource</span>
+
+          </label>
+
+          <div className="flex justify-end gap-2">
+
+            <Button type="button" variant="secondary" onClick={() => setShowForm(false)}>Cancel</Button>
+
+            <Button type="submit">Register Asset</Button>
+
+          </div>
+
+        </form>
+
+      </Modal>
+
     </div>
+
   );
+
 }
+

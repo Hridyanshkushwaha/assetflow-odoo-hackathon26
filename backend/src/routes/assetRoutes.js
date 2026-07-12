@@ -2,6 +2,7 @@ import { Router } from 'express';
 import {
   getAssets,
   getAsset,
+  getAssetHistory,
   createAsset,
   updateAsset,
   getBookableAssets,
@@ -14,6 +15,7 @@ const router = Router();
 router.use(protect);
 router.get('/', getAssets);
 router.get('/bookable', getBookableAssets);
+router.get('/:id/history', getAssetHistory);
 router.get('/:id', getAsset);
 router.post(
   '/',

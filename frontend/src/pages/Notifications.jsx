@@ -1,114 +1,128 @@
-import { useEffect, useState } from 'react';
-import api from '../services/api';
-import { useAuth } from '../context/AuthContext';
-import { canApproveMaintenance } from '../utils/roles';
-import LoadingSpinner from '../components/LoadingSpinner';
-
-export default function Notifications() {
-  const { user } = useAuth();
-  const [notifications, setNotifications] = useState([]);
-  const [logs, setLogs] = useState([]);
-  const [tab, setTab] = useState('notifications');
-  const [loading, setLoading] = useState(true);
-
-  const load = async () => {
-    setLoading(true);
-    try {
-      const n = await api.get('/notifications');
-      setNotifications(n.data);
-      if (canApproveMaintenance(user?.role)) {
-        const l = await api.get('/notifications/activity-logs');
-        setLogs(l.data);
-      }
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => { load(); }, []);
-
-  const markRead = async (id) => {
-    await api.put(`/notifications/${id}/read`);
-    load();
-  };
-
-  const markAllRead = async () => {
-    await api.put('/notifications/read-all');
-    load();
-  };
-
-  if (loading) return <LoadingSpinner />;
-
-  const unread = notifications.filter((n) => !n.isRead).length;
-
-  return (
-    <div>
-      <div className="mb-6 flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold">Notifications & Activity</h1>
-          <p className="text-slate-500">{unread} unread notifications</p>
-        </div>
-        {unread > 0 && (
-          <button onClick={markAllRead} className="rounded-lg border px-4 py-2 text-sm hover:bg-slate-50">Mark all read</button>
-        )}
-      </div>
-
-      <div className="mb-4 flex gap-2 border-b">
-        <button onClick={() => setTab('notifications')} className={`px-4 py-2 text-sm font-medium ${tab === 'notifications' ? 'border-b-2 border-primary-600 text-primary-600' : 'text-slate-500'}`}>
-          Notifications
-        </button>
-        {canApproveMaintenance(user?.role) && (
-          <button onClick={() => setTab('logs')} className={`px-4 py-2 text-sm font-medium ${tab === 'logs' ? 'border-b-2 border-primary-600 text-primary-600' : 'text-slate-500'}`}>
-            Activity Logs
-          </button>
-        )}
-      </div>
-
-      {tab === 'notifications' && (
-        <div className="rounded-xl border bg-white">
-          <ul>
-            {notifications.map((n) => (
-              <li key={n._id} className={`flex items-start justify-between border-b border-slate-100 p-4 ${!n.isRead ? 'bg-primary-50' : ''}`}>
-                <div>
-                  <p className="text-sm font-medium">{n.type?.replace(/_/g, ' ')}</p>
-                  <p className="text-sm text-slate-600">{n.message}</p>
-                  <p className="mt-1 text-xs text-slate-400">{new Date(n.createdAt).toLocaleString()}</p>
-                </div>
-                {!n.isRead && (
-                  <button onClick={() => markRead(n._id)} className="text-xs text-primary-600 hover:underline">Mark read</button>
-                )}
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
-
-      {tab === 'logs' && (
-        <div className="overflow-x-auto rounded-xl border bg-white">
-          <table className="w-full text-left text-sm">
-            <thead>
-              <tr className="border-b bg-slate-50 text-slate-500">
-                <th className="p-4">User</th>
-                <th className="p-4">Action</th>
-                <th className="p-4">Entity Type</th>
-                <th className="p-4">Time</th>
-              </tr>
-            </thead>
-            <tbody>
-              {logs.map((l) => (
-                <tr key={l._id} className="border-b border-slate-100">
-                  <td className="p-4">{l.user?.name} <span className="text-slate-400">({l.user?.role})</span></td>
-                  <td className="p-4">{l.action?.replace(/_/g, ' ')}</td>
-                  <td className="p-4">{l.entityType}</td>
-                  <td className="p-4 text-slate-500">{new Date(l.timestamp).toLocaleString()}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-    </div>
-  );
-}
+import { useEffect, useState } from 'react';
+import api from '../services/api';
+import { useAuth } from '../context/AuthContext';
+import { canApproveMaintenance } from '../utils/roles';
+import Card, { CardHeader } from '../components/Card';
+import PageHeader from '../components/PageHeader';
+import TabPills from '../components/TabPills';
+import LoadingSpinner from '../components/LoadingSpinner';
+import { Button } from '../components/ui';
+import { relativeTime } from '../utils/format';
+
+const NOTIF_FILTER_TABS = [
+  { id: 'all', label: 'All' },
+  { id: 'alerts', label: 'Alerts' },
+  { id: 'approvals', label: 'Approvals' },
+  { id: 'bookings', label: 'Bookings' },
+];
+
+const PAGE_TABS = [
+  { id: 'notifications', label: 'Notifications' },
+  { id: 'logs', label: 'Activity Logs' },
+];
+
+function getNotificationColor(type) {
+  if (type?.includes('overdue') || type?.includes('audit') || type?.includes('discrepancy')) return 'bg-orange-500';
+  if (type?.includes('maintenance') && type?.includes('approved')) return 'bg-emerald-500';
+  if (type?.includes('transfer')) return 'bg-red-500';
+  if (type?.includes('booking')) return 'bg-blue-500';
+  if (type?.includes('assign')) return 'bg-blue-500';
+  return 'bg-slate-400';
+}
+
+function matchesFilter(type, filter) {
+  if (filter === 'all') return true;
+  if (filter === 'alerts') return type?.includes('overdue') || type?.includes('audit') || type?.includes('discrepancy');
+  if (filter === 'approvals') return type?.includes('approved') || type?.includes('transfer');
+  if (filter === 'bookings') return type?.includes('booking');
+  return true;
+}
+
+export default function Notifications() {
+  const { user } = useAuth();
+  const [pageTab, setPageTab] = useState('notifications');
+  const [filter, setFilter] = useState('all');
+  const [notifications, setNotifications] = useState([]);
+  const [logs, setLogs] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const showLogs = canApproveMaintenance(user?.role);
+
+  const load = async () => {
+    setLoading(true);
+    try {
+      const n = await api.get('/notifications');
+      setNotifications(n.data);
+      if (showLogs) {
+        const l = await api.get('/notifications/activity-logs');
+        setLogs(l.data);
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => { load(); }, []);
+
+  if (loading) return <LoadingSpinner />;
+
+  const filtered = notifications.filter((n) => matchesFilter(n.type, filter));
+  const unread = notifications.filter((n) => !n.isRead).length;
+  const pageTabs = showLogs ? PAGE_TABS : PAGE_TABS.filter((t) => t.id === 'notifications');
+
+  return (
+    <div>
+      <PageHeader
+        title="Activity Logs & Notifications"
+        subtitle={pageTab === 'notifications' ? `${unread} unread` : `${logs.length} audit entries`}
+        action={pageTab === 'notifications' && unread > 0 && (
+          <Button variant="secondary" onClick={() => api.put('/notifications/read-all').then(load)}>Mark all read</Button>
+        )}
+      />
+
+      {showLogs && (
+        <TabPills tabs={pageTabs} active={pageTab} onChange={setPageTab} />
+      )}
+
+      {pageTab === 'notifications' && (
+        <>
+          <TabPills tabs={NOTIF_FILTER_TABS} active={filter} onChange={setFilter} />
+          <Card padding={false}>
+            {filtered.length === 0 ? (
+              <p className="p-6 text-sm text-slate-500">No notifications in this category</p>
+            ) : filtered.map((n) => (
+              <div key={n._id} className={`flex items-start gap-4 border-b border-slate-100 px-5 py-4 last:border-0 ${!n.isRead ? 'bg-primary-50/30' : ''}`}>
+                <span className={`mt-1.5 h-2.5 w-2.5 shrink-0 rounded-sm ${getNotificationColor(n.type)}`} />
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm text-slate-800">{n.message}</p>
+                </div>
+                <span className="shrink-0 text-xs text-slate-400">{relativeTime(n.createdAt)}</span>
+              </div>
+            ))}
+          </Card>
+        </>
+      )}
+
+      {pageTab === 'logs' && showLogs && (
+        <Card>
+          <CardHeader title="Audit Trail" subtitle="Who did what, when" />
+          {logs.length === 0 ? (
+            <p className="text-sm text-slate-500">No activity logged yet</p>
+          ) : (
+            <div className="space-y-3">
+              {logs.map((l) => (
+                <div key={l._id} className="rounded-xl bg-slate-50 p-4 text-sm">
+                  <p>
+                    <span className="font-medium">{l.user?.name}</span>
+                    <span className="text-slate-400"> ({l.user?.role?.replace(/([A-Z])/g, ' $1').trim()})</span>
+                  </p>
+                  <p className="text-slate-600">{l.action?.replace(/_/g, ' ')} · {l.entityType}</p>
+                  <p className="text-xs text-slate-400">{new Date(l.timestamp).toLocaleString()}</p>
+                </div>
+              ))}
+            </div>
+          )}
+        </Card>
+      )}
+    </div>
+  );
+}

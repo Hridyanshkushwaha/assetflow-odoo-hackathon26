@@ -13,6 +13,8 @@ const userSchema = new mongoose.Schema(
       default: 'Employee',
     },
     status: { type: String, enum: ['Active', 'Inactive'], default: 'Active' },
+    passwordResetToken: { type: String },
+    passwordResetExpires: { type: Date },
   },
   { timestamps: true }
 );

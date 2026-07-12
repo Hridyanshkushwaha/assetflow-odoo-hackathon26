@@ -13,6 +13,45 @@ const VALID_TRANSITIONS = {
   Resolved: [],
 };
 
+async function transitionMaintenance(request, status, req, extra = {}) {
+  const allowedNext = VALID_TRANSITIONS[request.status] || [];
+  if (!allowedNext.includes(status)) {
+    const err = new Error(`Cannot transition from ${request.status} to ${status}`);
+    err.code = ERROR_CODES.INVALID_STATUS_TRANSITION;
+    err.allowedTransitions = allowedNext;
+    throw err;
+  }
+
+  if (['Approved', 'Rejected'].includes(status) && req.user.role !== ROLES.ASSET_MANAGER) {
+    const err = new Error('Only Asset Manager can approve or reject maintenance requests');
+    err.statusCode = 403;
+    throw err;
+  }
+
+  request.status = status;
+  request.approvedBy = req.user._id;
+  if (extra.technicianName) request.technicianName = extra.technicianName;
+  if (extra.resolutionNotes) request.resolutionNotes = extra.resolutionNotes;
+
+  const asset = await Asset.findById(request.asset._id || request.asset);
+
+  if (status === 'Approved') {
+    asset.status = 'UnderMaintenance';
+    await createNotification(request.raisedBy._id, 'maintenance_approved', `Maintenance approved for ${asset.assetTag}`);
+    await asset.save();
+  } else if (status === 'Rejected') {
+    await createNotification(request.raisedBy._id, 'maintenance_rejected', `Maintenance rejected for ${asset.assetTag}`);
+  } else if (status === 'Resolved') {
+    asset.status = 'Available';
+    await createNotification(request.raisedBy._id, 'maintenance_resolved', `Maintenance resolved for ${asset.assetTag}`);
+    await asset.save();
+  }
+
+  await request.save();
+  await logActivity(req.user._id, 'update_maintenance', 'MaintenanceRequest', request._id);
+  return request;
+}
+
 export const getMaintenanceRequests = async (req, res) => {
   try {
     const filter = req.query.status ? { status: req.query.status } : {};
@@ -50,64 +89,69 @@ export const createMaintenanceRequest = async (req, res) => {
   }
 };
 
-export const updateMaintenanceStatus = async (req, res) => {
+export const approveMaintenance = async (req, res) => {
   try {
     const request = await MaintenanceRequest.findById(req.params.id).populate('asset raisedBy');
     if (!request) return res.status(404).json({ message: 'Request not found' });
 
-    const { status, technicianName, resolutionNotes } = req.body;
-    const allowedNext = VALID_TRANSITIONS[request.status] || [];
-
-    if (!allowedNext.includes(status)) {
-      return res.status(400).json({
-        code: ERROR_CODES.INVALID_STATUS_TRANSITION,
-        message: `Cannot transition from ${request.status} to ${status}`,
-        allowedTransitions: allowedNext,
-      });
-    }
-
-    if (['Approved', 'Rejected'].includes(status) && req.user.role !== ROLES.ASSET_MANAGER) {
-      return res.status(403).json({ message: 'Only Asset Manager can approve or reject maintenance requests' });
-    }
-
-    request.status = status;
-    request.approvedBy = req.user._id;
-    if (technicianName) request.technicianName = technicianName;
-    if (resolutionNotes) request.resolutionNotes = resolutionNotes;
-
-    const asset = await Asset.findById(request.asset._id);
-
-    if (status === 'Approved') {
-      asset.status = 'UnderMaintenance';
-      await createNotification(
-        request.raisedBy._id,
-        'maintenance_approved',
-        `Maintenance approved for ${asset.assetTag}`
-      );
-    } else if (status === 'Rejected') {
-      await createNotification(
-        request.raisedBy._id,
-        'maintenance_rejected',
-        `Maintenance rejected for ${asset.assetTag}`
-      );
-    } else if (status === 'Resolved') {
-      asset.status = 'Available';
-      await createNotification(
-        request.raisedBy._id,
-        'maintenance_resolved',
-        `Maintenance resolved for ${asset.assetTag}`
-      );
-    }
-
-    if (['Approved', 'Resolved'].includes(status)) {
-      await asset.save();
-    }
-
-    await request.save();
-    await logActivity(req.user._id, 'update_maintenance', 'MaintenanceRequest', request._id);
-
-    res.json(request);
+    const approved = req.body.approved !== false;
+    const status = approved ? 'Approved' : 'Rejected';
+    const updated = await transitionMaintenance(request, status, req);
+    res.json(updated);
   } catch (err) {
+    if (err.code === ERROR_CODES.INVALID_STATUS_TRANSITION) {
+      return res.status(400).json({ code: err.code, message: err.message, allowedTransitions: err.allowedTransitions });
+    }
+    if (err.statusCode === 403) return res.status(403).json({ message: err.message });
+    res.status(500).json({ message: err.message });
+  }
+};
+
+export const assignTechnician = async (req, res) => {
+  try {
+    const request = await MaintenanceRequest.findById(req.params.id).populate('asset raisedBy');
+    if (!request) return res.status(404).json({ message: 'Request not found' });
+
+    const updated = await transitionMaintenance(request, 'TechnicianAssigned', req, {
+      technicianName: req.body.technicianName || 'Tech Team',
+    });
+    res.json(updated);
+  } catch (err) {
+    if (err.code === ERROR_CODES.INVALID_STATUS_TRANSITION) {
+      return res.status(400).json({ code: err.code, message: err.message, allowedTransitions: err.allowedTransitions });
+    }
+    res.status(500).json({ message: err.message });
+  }
+};
+
+export const startMaintenanceWork = async (req, res) => {
+  try {
+    const request = await MaintenanceRequest.findById(req.params.id).populate('asset raisedBy');
+    if (!request) return res.status(404).json({ message: 'Request not found' });
+
+    const updated = await transitionMaintenance(request, 'InProgress', req);
+    res.json(updated);
+  } catch (err) {
+    if (err.code === ERROR_CODES.INVALID_STATUS_TRANSITION) {
+      return res.status(400).json({ code: err.code, message: err.message, allowedTransitions: err.allowedTransitions });
+    }
+    res.status(500).json({ message: err.message });
+  }
+};
+
+export const resolveMaintenance = async (req, res) => {
+  try {
+    const request = await MaintenanceRequest.findById(req.params.id).populate('asset raisedBy');
+    if (!request) return res.status(404).json({ message: 'Request not found' });
+
+    const updated = await transitionMaintenance(request, 'Resolved', req, {
+      resolutionNotes: req.body.resolutionNotes,
+    });
+    res.json(updated);
+  } catch (err) {
+    if (err.code === ERROR_CODES.INVALID_STATUS_TRANSITION) {
+      return res.status(400).json({ code: err.code, message: err.message, allowedTransitions: err.allowedTransitions });
+    }
     res.status(500).json({ message: err.message });
   }
 };

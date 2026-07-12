@@ -73,7 +73,7 @@ export const createBooking = async (req, res) => {
   }
 };
 
-export const updateBooking = async (req, res) => {
+export const cancelBooking = async (req, res) => {
   try {
     const booking = await Booking.findById(req.params.id);
     if (!booking) return res.status(404).json({ message: 'Booking not found' });
@@ -81,34 +81,16 @@ export const updateBooking = async (req, res) => {
     const isOwner = booking.bookedBy.toString() === req.user._id.toString();
     const isManager = ['Admin', 'AssetManager', 'DepartmentHead'].includes(req.user.role);
     if (!isOwner && !isManager) {
-      return res.status(403).json({ message: 'Not authorized to modify this booking' });
+      return res.status(403).json({ message: 'Not authorized to cancel this booking' });
     }
 
-    if (req.body.status === 'Cancelled') {
-      if (booking.status === 'Completed') {
-        return res.status(400).json({ message: 'Cannot cancel a completed booking' });
-      }
-      booking.status = 'Cancelled';
-      await booking.save();
-      await createNotification(booking.bookedBy, 'booking_cancelled', 'Your booking has been cancelled');
-      return res.json(booking);
+    if (booking.status === 'Completed') {
+      return res.status(400).json({ message: 'Cannot cancel a completed booking' });
     }
 
-    if (req.body.startTime && req.body.endTime) {
-      const start = new Date(req.body.startTime);
-      const end = new Date(req.body.endTime);
-      const overlap = await findOverlappingBooking(booking.resource, start, end, booking._id);
-      if (overlap) {
-        return res.status(409).json({
-          code: ERROR_CODES.BOOKING_OVERLAP,
-          message: 'Reschedule overlaps with existing booking',
-        });
-      }
-      booking.startTime = start;
-      booking.endTime = end;
-    }
-
+    booking.status = 'Cancelled';
     await booking.save();
+    await createNotification(booking.bookedBy, 'booking_cancelled', 'Your booking has been cancelled');
     res.json(booking);
   } catch (err) {
     res.status(500).json({ message: err.message });
