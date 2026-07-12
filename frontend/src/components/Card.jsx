@@ -1,6 +1,6 @@
 export default function Card({ children, className = '', padding = true }) {
   return (
-    <div className={`rounded-2xl border border-slate-200/80 bg-white shadow-sm ${padding ? 'p-6' : ''} ${className}`}>
+    <div className={`rounded-xl bg-surface-raised shadow-card ${padding ? 'p-5 lg:p-6' : ''} ${className}`}>
       {children}
     </div>
   );
@@ -8,10 +8,10 @@ export default function Card({ children, className = '', padding = true }) {
 
 export function CardHeader({ title, subtitle, action }) {
   return (
-    <div className="mb-5 flex flex-wrap items-start justify-between gap-3">
+    <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
       <div>
-        <h2 className="text-lg font-semibold text-slate-900">{title}</h2>
-        {subtitle && <p className="mt-0.5 text-sm text-slate-500">{subtitle}</p>}
+        <h3 className="text-sm font-semibold tracking-tight text-ink">{title}</h3>
+        {subtitle && <p className="mt-0.5 text-xs text-ink-muted">{subtitle}</p>}
       </div>
       {action}
     </div>

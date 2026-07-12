@@ -34,7 +34,7 @@ export default function Signup() {
         <AuthField label="Password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} minLength={6} required />
       </AuthForm>
       <p className="mt-6 text-center text-sm text-slate-500">
-        Already have an account? <Link to="/login" className="font-medium text-primary-600">Sign in</Link>
+        Already have an account? <Link to="/login" className="font-medium text-accent hover:text-accent-dark">Sign in</Link>
       </p>
     </AuthLayout>
   );

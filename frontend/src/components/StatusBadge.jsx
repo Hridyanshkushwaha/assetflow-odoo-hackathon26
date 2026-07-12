@@ -1,37 +1,37 @@
 const styles = {
-  Available: 'bg-green-100 text-green-800',
-  Allocated: 'bg-blue-100 text-blue-800',
-  Reserved: 'bg-yellow-100 text-yellow-800',
-  UnderMaintenance: 'bg-orange-100 text-orange-800',
-  Lost: 'bg-red-100 text-red-800',
-  Retired: 'bg-gray-100 text-gray-800',
-  Disposed: 'bg-slate-100 text-slate-600',
-  Active: 'bg-green-100 text-green-800',
-  Returned: 'bg-gray-100 text-gray-700',
-  Overdue: 'bg-red-100 text-red-800',
-  Pending: 'bg-yellow-100 text-yellow-800',
-  Approved: 'bg-green-100 text-green-800',
-  Rejected: 'bg-red-100 text-red-800',
-  Requested: 'bg-yellow-100 text-yellow-800',
-  Upcoming: 'bg-blue-100 text-blue-800',
-  Ongoing: 'bg-indigo-100 text-indigo-800',
-  Completed: 'bg-gray-100 text-gray-800',
-  Cancelled: 'bg-slate-100 text-slate-600',
-  Open: 'bg-blue-100 text-blue-800',
-  Closed: 'bg-gray-100 text-gray-700',
-  Verified: 'bg-green-100 text-green-800',
-  Missing: 'bg-red-100 text-red-800',
-  Damaged: 'bg-orange-100 text-orange-800',
-  InProgress: 'bg-indigo-100 text-indigo-800',
-  TechnicianAssigned: 'bg-purple-100 text-purple-800',
-  Resolved: 'bg-green-100 text-green-800',
+  Available: 'bg-emerald-50 text-emerald-800 ring-emerald-600/20',
+  Allocated: 'bg-sky-50 text-sky-800 ring-sky-600/20',
+  Reserved: 'bg-amber-50 text-amber-800 ring-amber-600/20',
+  UnderMaintenance: 'bg-orange-50 text-orange-800 ring-orange-600/20',
+  Lost: 'bg-red-50 text-red-800 ring-red-600/20',
+  Retired: 'bg-stone-100 text-stone-600 ring-stone-400/20',
+  Disposed: 'bg-stone-50 text-stone-500 ring-stone-300/20',
+  Active: 'bg-emerald-50 text-emerald-800 ring-emerald-600/20',
+  Returned: 'bg-stone-100 text-stone-600 ring-stone-400/20',
+  Overdue: 'bg-red-50 text-red-800 ring-red-600/20',
+  Pending: 'bg-amber-50 text-amber-800 ring-amber-600/20',
+  Approved: 'bg-emerald-50 text-emerald-800 ring-emerald-600/20',
+  Rejected: 'bg-red-50 text-red-800 ring-red-600/20',
+  Requested: 'bg-amber-50 text-amber-800 ring-amber-600/20',
+  Upcoming: 'bg-sky-50 text-sky-800 ring-sky-600/20',
+  Ongoing: 'bg-indigo-50 text-indigo-800 ring-indigo-600/20',
+  Completed: 'bg-stone-100 text-stone-600 ring-stone-400/20',
+  Cancelled: 'bg-stone-50 text-stone-500 ring-stone-300/20',
+  Open: 'bg-sky-50 text-sky-800 ring-sky-600/20',
+  Closed: 'bg-stone-100 text-stone-600 ring-stone-400/20',
+  Verified: 'bg-emerald-50 text-emerald-800 ring-emerald-600/20',
+  Missing: 'bg-red-50 text-red-800 ring-red-600/20',
+  Damaged: 'bg-orange-50 text-orange-800 ring-orange-600/20',
+  InProgress: 'bg-indigo-50 text-indigo-800 ring-indigo-600/20',
+  TechnicianAssigned: 'bg-violet-50 text-violet-800 ring-violet-600/20',
+  Resolved: 'bg-emerald-50 text-emerald-800 ring-emerald-600/20',
 };
 
 export default function StatusBadge({ status }) {
   const label = status?.replace(/([A-Z])/g, ' $1').trim() || 'unknown';
-  const style = styles[status] || 'bg-gray-100 text-gray-700';
+  const style = styles[status] || 'bg-stone-100 text-stone-600 ring-stone-400/20';
   return (
-    <span className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium ${style}`}>
+    <span className={`inline-flex rounded-md px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide ring-1 ring-inset ${style}`}>
       {label}
     </span>
   );

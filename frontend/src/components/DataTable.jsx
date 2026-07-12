@@ -1,33 +1,33 @@
 export default function DataTable({ columns, rows, onRowClick, emptyMessage = 'No records found' }) {
   if (!rows?.length) {
     return (
-      <div className="rounded-xl border border-dashed border-slate-200 py-12 text-center text-sm text-slate-500">
+      <div className="rounded-lg border border-dashed border-line py-14 text-center text-sm text-ink-faint">
         {emptyMessage}
       </div>
     );
   }
 
   return (
-    <div className="overflow-hidden rounded-xl border border-slate-200">
+    <div className="overflow-hidden rounded-lg ring-1 ring-line">
       <table className="w-full text-left text-sm">
         <thead>
-          <tr className="border-b border-slate-200 bg-slate-50/80">
+          <tr className="border-b border-line bg-surface-sunken/80">
             {columns.map((col) => (
-              <th key={col.key} className="px-4 py-3 font-semibold text-slate-600">
+              <th key={col.key} className="px-4 py-3 text-[11px] font-semibold uppercase tracking-wider text-ink-faint">
                 {col.label}
               </th>
             ))}
           </tr>
         </thead>
-        <tbody>
+        <tbody className="bg-surface-raised">
           {rows.map((row) => (
             <tr
               key={row.id}
               onClick={onRowClick ? () => onRowClick(row) : undefined}
-              className={`border-b border-slate-100 last:border-0 ${onRowClick ? 'cursor-pointer hover:bg-primary-50/40' : ''}`}
+              className={`border-b border-line/80 last:border-0 ${onRowClick ? 'cursor-pointer hover:bg-accent-muted/20' : ''}`}
             >
               {columns.map((col) => (
-                <td key={col.key} className="px-4 py-3.5 text-slate-700">
+                <td key={col.key} className="px-4 py-3.5 text-ink-muted">
                   {col.render ? col.render(row) : row[col.key]}
                 </td>
               ))}

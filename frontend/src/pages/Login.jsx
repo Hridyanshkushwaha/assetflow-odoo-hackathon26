@@ -32,10 +32,10 @@ export default function Login() {
         <AuthField label="Password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
       </AuthForm>
       <p className="mt-4 text-center text-sm">
-        <Link to="/forgot-password" className="font-medium text-primary-600">Forgot password?</Link>
+        <Link to="/forgot-password" className="font-medium text-accent hover:text-accent-dark">Forgot password?</Link>
       </p>
       <p className="mt-6 text-center text-sm text-slate-500">
-        No account? <Link to="/signup" className="font-medium text-primary-600">Sign up</Link>
+        No account? <Link to="/signup" className="font-medium text-accent hover:text-accent-dark">Sign up</Link>
       </p>
     </AuthLayout>
   );

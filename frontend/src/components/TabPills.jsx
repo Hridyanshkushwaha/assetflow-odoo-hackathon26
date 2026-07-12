@@ -1,16 +1,16 @@
 export default function TabPills({ tabs, active, onChange, action }) {
   return (
-    <div className="mb-6 flex flex-wrap items-center gap-2">
-      <div className="flex flex-1 flex-wrap gap-2">
+    <div className="mb-5 flex flex-wrap items-center gap-2">
+      <div className="inline-flex flex-wrap gap-1 rounded-lg bg-surface-sunken p-1">
         {tabs.map((tab) => (
           <button
             key={tab.id}
             type="button"
             onClick={() => onChange(tab.id)}
-            className={`rounded-full border px-4 py-2 text-sm font-medium transition-all ${
+            className={`rounded-md px-3.5 py-2 text-xs font-medium transition-all ${
               active === tab.id
-                ? 'border-primary-600 bg-primary-600 text-white shadow-sm'
-                : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-50'
+                ? 'bg-surface-raised text-ink shadow-sm'
+                : 'text-ink-muted hover:text-ink'
             }`}
           >
             {tab.label}
