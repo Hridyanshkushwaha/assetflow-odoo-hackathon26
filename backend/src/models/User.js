@@ -5,26 +5,24 @@ const userSchema = new mongoose.Schema(
   {
     name: { type: String, required: true, trim: true },
     email: { type: String, required: true, unique: true, lowercase: true, trim: true },
-    password: { type: String, required: true, minlength: 6 },
+    passwordHash: { type: String, required: true },
     department: { type: mongoose.Schema.Types.ObjectId, ref: 'Department' },
     role: {
       type: String,
-      enum: ['admin', 'asset_manager', 'department_head', 'employee'],
-      default: 'employee',
+      enum: ['Employee', 'DepartmentHead', 'AssetManager', 'Admin'],
+      default: 'Employee',
     },
-    status: { type: String, enum: ['active', 'inactive'], default: 'active' },
+    status: { type: String, enum: ['Active', 'Inactive'], default: 'Active' },
   },
   { timestamps: true }
 );
 
-userSchema.pre('save', async function (next) {
-  if (!this.isModified('password')) return next();
-  this.password = await bcrypt.hash(this.password, 12);
-  next();
-});
-
 userSchema.methods.comparePassword = function (candidate) {
-  return bcrypt.compare(candidate, this.password);
+  return bcrypt.compare(candidate, this.passwordHash);
+};
+
+userSchema.statics.hashPassword = function (password) {
+  return bcrypt.hash(password, 12);
 };
 
 export default mongoose.model('User', userSchema);

@@ -4,8 +4,8 @@ import { logActivity } from '../utils/activityLogger.js';
 export const getEmployees = async (req, res) => {
   try {
     const employees = await User.find()
-      .select('-password')
-      .populate('department', 'name')
+      .select('-passwordHash')
+      .populate('department', 'name code')
       .sort({ name: 1 });
     res.json(employees);
   } catch (err) {
@@ -23,20 +23,20 @@ export const updateEmployee = async (req, res) => {
     if (status !== undefined) user.status = status;
 
     if (role !== undefined) {
-      const allowed = ['employee', 'department_head', 'asset_manager'];
-      if (req.user.role !== 'admin') {
+      const allowed = ['Employee', 'DepartmentHead', 'AssetManager'];
+      if (req.user.role !== 'Admin') {
         return res.status(403).json({ message: 'Only admin can assign roles' });
       }
-      if (!allowed.includes(role) && role !== 'admin') {
+      if (!allowed.includes(role) && role !== 'Admin') {
         return res.status(400).json({ message: 'Invalid role' });
       }
       user.role = role;
     }
 
     await user.save();
-    await logActivity(req.user._id, 'update_employee', 'User', { employeeId: user._id, role: user.role });
+    await logActivity(req.user._id, 'update_employee', 'User', user._id);
 
-    const updated = await User.findById(user._id).select('-password').populate('department', 'name');
+    const updated = await User.findById(user._id).select('-passwordHash').populate('department', 'name code');
     res.json(updated);
   } catch (err) {
     res.status(500).json({ message: err.message });

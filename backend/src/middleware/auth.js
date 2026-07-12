@@ -10,9 +10,9 @@ export const protect = async (req, res, next) => {
 
     const token = authHeader.split(' ')[1];
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    const user = await User.findById(decoded.id).select('-password').populate('department', 'name');
+    const user = await User.findById(decoded.id).select('-passwordHash').populate('department', 'name code');
 
-    if (!user || user.status === 'inactive') {
+    if (!user || user.status === 'Inactive') {
       return res.status(401).json({ message: 'User not found or inactive' });
     }
 

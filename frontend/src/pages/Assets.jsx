@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import api from '../services/api';
 import { useAuth } from '../context/AuthContext';
+import { canRegisterAssets } from '../utils/roles';
 import StatusBadge from '../components/StatusBadge';
 import LoadingSpinner from '../components/LoadingSpinner';
 
@@ -8,27 +9,22 @@ export default function Assets() {
   const { user } = useAuth();
   const [assets, setAssets] = useState([]);
   const [categories, setCategories] = useState([]);
-  const [departments, setDepartments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({
-    name: '', category: '', serialNumber: '', location: '', condition: 'good', isBookable: false,
+    name: '', category: '', serialNumber: '', location: '', condition: 'Good', isBookable: false,
   });
-
-  const canRegister = ['admin', 'asset_manager'].includes(user?.role);
 
   const load = async () => {
     setLoading(true);
     try {
-      const [a, c, d] = await Promise.all([
+      const [a, c] = await Promise.all([
         api.get('/assets', { params: search ? { search } : {} }),
         api.get('/categories'),
-        api.get('/departments'),
       ]);
       setAssets(a.data);
       setCategories(c.data);
-      setDepartments(d.data);
     } catch (err) {
       console.error(err);
     } finally {
@@ -38,18 +34,13 @@ export default function Assets() {
 
   useEffect(() => { load(); }, []);
 
-  const handleSearch = (e) => {
-    e.preventDefault();
-    load();
-  };
-
   const handleCreate = async (e) => {
     e.preventDefault();
     const fd = new FormData();
     Object.entries(form).forEach(([k, v]) => fd.append(k, v));
     await api.post('/assets', fd, { headers: { 'Content-Type': 'multipart/form-data' } });
     setShowForm(false);
-    setForm({ name: '', category: '', serialNumber: '', location: '', condition: 'good', isBookable: false });
+    setForm({ name: '', category: '', serialNumber: '', location: '', condition: 'Good', isBookable: false });
     load();
   };
 
@@ -62,23 +53,15 @@ export default function Assets() {
           <h1 className="text-2xl font-bold">Asset Directory</h1>
           <p className="text-slate-500">Register and track all organizational assets</p>
         </div>
-        {canRegister && (
-          <button
-            onClick={() => setShowForm(!showForm)}
-            className="rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700"
-          >
+        {canRegisterAssets(user?.role) && (
+          <button onClick={() => setShowForm(!showForm)} className="rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-white">
             {showForm ? 'Cancel' : 'Register Asset'}
           </button>
         )}
       </div>
 
-      <form onSubmit={handleSearch} className="mb-6 flex gap-2">
-        <input
-          placeholder="Search by tag, serial, or name..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="flex-1 rounded-lg border px-3 py-2"
-        />
+      <form onSubmit={(e) => { e.preventDefault(); load(); }} className="mb-6 flex gap-2">
+        <input placeholder="Search by tag, serial, or name..." value={search} onChange={(e) => setSearch(e.target.value)} className="flex-1 rounded-lg border px-3 py-2" />
         <button type="submit" className="rounded-lg border px-4 py-2 text-sm">Search</button>
       </form>
 
@@ -93,12 +76,7 @@ export default function Assets() {
             </select>
             <input placeholder="Serial number" value={form.serialNumber} onChange={(e) => setForm({ ...form, serialNumber: e.target.value })} className="rounded-lg border px-3 py-2" />
             <input placeholder="Location" value={form.location} onChange={(e) => setForm({ ...form, location: e.target.value })} className="rounded-lg border px-3 py-2" />
-            <select value={form.condition} onChange={(e) => setForm({ ...form, condition: e.target.value })} className="rounded-lg border px-3 py-2">
-              <option value="excellent">Excellent</option>
-              <option value="good">Good</option>
-              <option value="fair">Fair</option>
-              <option value="poor">Poor</option>
-            </select>
+            <input placeholder="Condition" value={form.condition} onChange={(e) => setForm({ ...form, condition: e.target.value })} className="rounded-lg border px-3 py-2" />
             <label className="flex items-center gap-2">
               <input type="checkbox" checked={form.isBookable} onChange={(e) => setForm({ ...form, isBookable: e.target.checked })} />
               <span className="text-sm">Shared / Bookable resource</span>
@@ -133,7 +111,6 @@ export default function Assets() {
             ))}
           </tbody>
         </table>
-        {assets.length === 0 && <p className="p-8 text-center text-slate-500">No assets found</p>}
       </div>
     </div>
   );

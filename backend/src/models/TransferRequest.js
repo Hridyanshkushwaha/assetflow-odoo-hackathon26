@@ -2,19 +2,16 @@ import mongoose from 'mongoose';
 
 const transferRequestSchema = new mongoose.Schema(
   {
-    allocation: { type: mongoose.Schema.Types.ObjectId, ref: 'Allocation', required: true },
     asset: { type: mongoose.Schema.Types.ObjectId, ref: 'Asset', required: true },
-    fromUser: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
-    toUser: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
-    toDepartment: { type: mongoose.Schema.Types.ObjectId, ref: 'Department' },
+    fromHolder: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+    toHolder: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
     requestedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
     status: {
       type: String,
-      enum: ['requested', 'approved', 'rejected'],
-      default: 'requested',
+      enum: ['Requested', 'Approved', 'Rejected'],
+      default: 'Requested',
     },
     approvedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
-    notes: { type: String },
   },
   { timestamps: true }
 );

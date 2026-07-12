@@ -6,12 +6,11 @@ import { logActivity } from '../utils/activityLogger.js';
 
 export const getAssets = async (req, res) => {
   try {
-    const { search, category, status, department, location, isBookable } = req.query;
+    const { search, category, status, location, isBookable } = req.query;
     const filter = {};
 
     if (category) filter.category = category;
     if (status) filter.status = status;
-    if (department) filter.department = department;
     if (location) filter.location = new RegExp(location, 'i');
     if (isBookable !== undefined) filter.isBookable = isBookable === 'true';
 
@@ -24,9 +23,7 @@ export const getAssets = async (req, res) => {
     }
 
     const assets = await Asset.find(filter)
-      .populate('category', 'name')
-      .populate('department', 'name')
-      .populate('registeredBy', 'name')
+      .populate('category', 'name extraFields')
       .sort({ createdAt: -1 });
 
     res.json(assets);
@@ -37,16 +34,11 @@ export const getAssets = async (req, res) => {
 
 export const getAsset = async (req, res) => {
   try {
-    const asset = await Asset.findById(req.params.id)
-      .populate('category', 'name customFields')
-      .populate('department', 'name')
-      .populate('registeredBy', 'name email');
+    const asset = await Asset.findById(req.params.id).populate('category', 'name extraFields');
 
     if (!asset) return res.status(404).json({ message: 'Asset not found' });
 
     const allocations = await Allocation.find({ asset: asset._id })
-      .populate('allocatedTo', 'name email')
-      .populate('allocatedToDepartment', 'name')
       .populate('allocatedBy', 'name')
       .sort({ createdAt: -1 });
 
@@ -64,25 +56,25 @@ export const getAsset = async (req, res) => {
 export const createAsset = async (req, res) => {
   try {
     const assetTag = await generateAssetTag();
-    const photos = req.files?.filter((f) => f.fieldname === 'photos').map((f) => `/uploads/${f.filename}`) || [];
-    const documents = req.files?.filter((f) => f.fieldname === 'documents').map((f) => `/uploads/${f.filename}`) || [];
+    const photos = req.files?.map((f) => `/uploads/${f.filename}`) || [];
 
     const asset = await Asset.create({
-      ...req.body,
+      name: req.body.name,
+      category: req.body.category,
       assetTag,
-      photos,
-      documents,
-      registeredBy: req.user._id,
+      serialNumber: req.body.serialNumber,
+      acquisitionDate: req.body.acquisitionDate,
       acquisitionCost: req.body.acquisitionCost ? Number(req.body.acquisitionCost) : undefined,
+      condition: req.body.condition,
+      location: req.body.location,
+      photos,
       isBookable: req.body.isBookable === 'true' || req.body.isBookable === true,
+      status: 'Available',
     });
 
-    await logActivity(req.user._id, 'register_asset', 'Asset', { assetTag: asset.assetTag });
+    await logActivity(req.user._id, 'register_asset', 'Asset', asset._id);
 
-    const populated = await Asset.findById(asset._id)
-      .populate('category', 'name')
-      .populate('department', 'name');
-
+    const populated = await Asset.findById(asset._id).populate('category', 'name');
     res.status(201).json(populated);
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -91,14 +83,13 @@ export const createAsset = async (req, res) => {
 
 export const updateAsset = async (req, res) => {
   try {
-    const asset = await Asset.findById(req.params.id);
+    const asset = await Asset.findByIdAndUpdate(req.params.id, req.body, {
+      new: true,
+      runValidators: true,
+    });
     if (!asset) return res.status(404).json({ message: 'Asset not found' });
 
-    Object.assign(asset, req.body);
-    if (req.body.acquisitionCost) asset.acquisitionCost = Number(req.body.acquisitionCost);
-    await asset.save();
-
-    await logActivity(req.user._id, 'update_asset', 'Asset', { assetTag: asset.assetTag });
+    await logActivity(req.user._id, 'update_asset', 'Asset', asset._id);
     res.json(asset);
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -107,7 +98,10 @@ export const updateAsset = async (req, res) => {
 
 export const getBookableAssets = async (req, res) => {
   try {
-    const assets = await Asset.find({ isBookable: true, status: { $in: ['available', 'reserved'] } })
+    const assets = await Asset.find({
+      isBookable: true,
+      status: { $in: ['Available', 'Reserved'] },
+    })
       .populate('category', 'name')
       .sort({ name: 1 });
     res.json(assets);

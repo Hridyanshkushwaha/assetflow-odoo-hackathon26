@@ -6,7 +6,7 @@ const router = Router();
 
 router.use(protect);
 router.get('/', getDepartments);
-router.post('/', authorize('admin'), createDepartment);
-router.put('/:id', authorize('admin'), updateDepartment);
+router.post('/', authorize('Admin'), createDepartment);
+router.put('/:id', authorize('Admin'), updateDepartment);
 
 export default router;

@@ -12,6 +12,7 @@ import Maintenance from './pages/Maintenance';
 import Audits from './pages/Audits';
 import Reports from './pages/Reports';
 import Notifications from './pages/Notifications';
+import { ROLES } from './utils/roles';
 
 export default function App() {
   return (
@@ -26,7 +27,7 @@ export default function App() {
         }
       >
         <Route index element={<Dashboard />} />
-        <Route path="organization" element={<ProtectedRoute roles={['admin']}><OrganizationSetup /></ProtectedRoute>} />
+        <Route path="organization" element={<ProtectedRoute roles={[ROLES.ADMIN]}><OrganizationSetup /></ProtectedRoute>} />
         <Route path="assets" element={<Assets />} />
         <Route path="allocations" element={<Allocations />} />
         <Route path="bookings" element={<Bookings />} />

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import api from '../services/api';
 import { useAuth } from '../context/AuthContext';
+import { ROLES, canApproveMaintenance } from '../utils/roles';
 import StatusBadge from '../components/StatusBadge';
 import LoadingSpinner from '../components/LoadingSpinner';
 
@@ -9,23 +10,19 @@ export default function Audits() {
   const [cycles, setCycles] = useState([]);
   const [selected, setSelected] = useState(null);
   const [departments, setDepartments] = useState([]);
-  const [employees, setEmployees] = useState([]);
   const [loading, setLoading] = useState(true);
   const [form, setForm] = useState({
-    name: '', scopeType: 'department', scopeDepartment: '', startDate: '', endDate: '', auditors: [],
+    name: '', scopeDepartment: '', scopeLocation: '', startDate: '', endDate: '', auditors: [],
   });
-
-  const isAdmin = user?.role === 'admin';
 
   const load = async () => {
     setLoading(true);
     try {
       const c = await api.get('/audits');
       setCycles(c.data);
-      if (isAdmin) {
-        const [d, e] = await Promise.all([api.get('/departments'), api.get('/employees')]);
+      if (user?.role === ROLES.ADMIN) {
+        const d = await api.get('/departments');
         setDepartments(d.data);
-        setEmployees(e.data);
       }
     } catch (err) {
       console.error(err);
@@ -43,8 +40,8 @@ export default function Audits() {
 
   const createCycle = async (e) => {
     e.preventDefault();
-    await api.post('/audits', { ...form, auditors: form.auditors.filter(Boolean) });
-    setForm({ name: '', scopeType: 'department', scopeDepartment: '', startDate: '', endDate: '', auditors: [] });
+    await api.post('/audits', form);
+    setForm({ name: '', scopeDepartment: '', scopeLocation: '', startDate: '', endDate: '', auditors: [] });
     load();
   };
 
@@ -66,7 +63,7 @@ export default function Audits() {
       <h1 className="mb-2 text-2xl font-bold">Asset Audit</h1>
       <p className="mb-6 text-slate-500">Run structured verification cycles</p>
 
-      {isAdmin && (
+      {user?.role === ROLES.ADMIN && (
         <form onSubmit={createCycle} className="mb-6 rounded-xl border bg-white p-6">
           <h2 className="mb-4 font-semibold">Create Audit Cycle</h2>
           <div className="grid gap-4 md:grid-cols-2">
@@ -75,6 +72,7 @@ export default function Audits() {
               <option value="">All departments</option>
               {departments.map((d) => <option key={d._id} value={d._id}>{d.name}</option>)}
             </select>
+            <input placeholder="Scope location (optional)" value={form.scopeLocation} onChange={(e) => setForm({ ...form, scopeLocation: e.target.value })} className="rounded-lg border px-3 py-2" />
             <input type="date" value={form.startDate} onChange={(e) => setForm({ ...form, startDate: e.target.value })} className="rounded-lg border px-3 py-2" required />
             <input type="date" value={form.endDate} onChange={(e) => setForm({ ...form, endDate: e.target.value })} className="rounded-lg border px-3 py-2" required />
           </div>
@@ -87,16 +85,12 @@ export default function Audits() {
           <h2 className="mb-4 font-semibold">Audit Cycles</h2>
           <ul className="space-y-2">
             {cycles.map((c) => (
-              <li
-                key={c._id}
-                onClick={() => loadCycle(c._id)}
-                className="cursor-pointer rounded-lg bg-slate-50 p-3 hover:bg-primary-50"
-              >
+              <li key={c._id} onClick={() => loadCycle(c._id)} className="cursor-pointer rounded-lg bg-slate-50 p-3 hover:bg-primary-50">
                 <div className="flex justify-between">
                   <span className="font-medium">{c.name}</span>
                   <StatusBadge status={c.status} />
                 </div>
-                <p className="text-xs text-slate-500">{c.items?.length || 0} assets in scope</p>
+                <p className="text-xs text-slate-500">{c.itemCount || 0} assets in scope</p>
               </li>
             ))}
           </ul>
@@ -106,10 +100,8 @@ export default function Audits() {
           <div className="rounded-xl border bg-white p-6">
             <div className="mb-4 flex items-center justify-between">
               <h2 className="font-semibold">{selected.name}</h2>
-              {selected.status === 'active' && ['admin', 'asset_manager'].includes(user?.role) && (
-                <button onClick={() => closeCycle(selected._id)} className="rounded bg-red-600 px-3 py-1 text-xs text-white">
-                  Close Cycle
-                </button>
+              {selected.status === 'Open' && canApproveMaintenance(user?.role) && (
+                <button onClick={() => closeCycle(selected._id)} className="rounded bg-red-600 px-3 py-1 text-xs text-white">Close Cycle</button>
               )}
             </div>
             <ul className="max-h-96 space-y-2 overflow-y-auto">
@@ -119,16 +111,10 @@ export default function Audits() {
                     <p className="font-mono">{item.asset?.assetTag}</p>
                     <p className="text-slate-500">{item.asset?.name}</p>
                   </div>
-                  {selected.status === 'active' ? (
+                  {selected.status === 'Open' ? (
                     <div className="flex gap-1">
-                      {['verified', 'missing', 'damaged'].map((r) => (
-                        <button
-                          key={r}
-                          onClick={() => verifyItem(selected._id, item._id, r)}
-                          className={`rounded px-2 py-1 text-xs capitalize ${
-                            item.result === r ? 'bg-primary-600 text-white' : 'bg-white border'
-                          }`}
-                        >
+                      {['Verified', 'Missing', 'Damaged'].map((r) => (
+                        <button key={r} onClick={() => verifyItem(selected._id, item._id, r)} className={`rounded px-2 py-1 text-xs ${item.result === r ? 'bg-primary-600 text-white' : 'border bg-white'}`}>
                           {r}
                         </button>
                       ))}

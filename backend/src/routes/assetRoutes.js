@@ -17,10 +17,10 @@ router.get('/bookable', getBookableAssets);
 router.get('/:id', getAsset);
 router.post(
   '/',
-  authorize('admin', 'asset_manager'),
-  upload.fields([{ name: 'photos', maxCount: 5 }, { name: 'documents', maxCount: 5 }]),
+  authorize('Admin', 'AssetManager'),
+  upload.array('photos', 5),
   createAsset
 );
-router.put('/:id', authorize('admin', 'asset_manager'), updateAsset);
+router.put('/:id', authorize('Admin', 'AssetManager'), updateAsset);
 
 export default router;

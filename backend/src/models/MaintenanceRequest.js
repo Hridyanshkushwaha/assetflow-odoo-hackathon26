@@ -4,18 +4,17 @@ const maintenanceRequestSchema = new mongoose.Schema(
   {
     asset: { type: mongoose.Schema.Types.ObjectId, ref: 'Asset', required: true },
     raisedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
-    description: { type: String, required: true },
-    priority: { type: String, enum: ['low', 'medium', 'high', 'critical'], default: 'medium' },
-    photos: [{ type: String }],
+    issueDescription: { type: String, required: true },
+    priority: { type: String, enum: ['Low', 'Medium', 'High'], default: 'Medium' },
+    photo: { type: String },
     status: {
       type: String,
-      enum: ['pending', 'approved', 'rejected', 'technician_assigned', 'in_progress', 'resolved'],
-      default: 'pending',
+      enum: ['Pending', 'Approved', 'Rejected', 'TechnicianAssigned', 'InProgress', 'Resolved'],
+      default: 'Pending',
     },
-    technician: { type: String },
     approvedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
-    rejectionReason: { type: String },
-    resolvedAt: { type: Date },
+    technicianName: { type: String },
+    resolutionNotes: { type: String },
   },
   { timestamps: true }
 );

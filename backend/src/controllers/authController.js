@@ -16,12 +16,13 @@ export const signup = async (req, res) => {
     if (exists) return res.status(400).json({ message: 'Email already registered' });
 
     const userCount = await User.countDocuments();
-    const role = userCount === 0 ? 'admin' : 'employee';
+    const role = userCount === 0 ? 'Admin' : 'Employee';
+    const passwordHash = await User.hashPassword(password);
 
-    const user = await User.create({ name, email, password, role });
+    const user = await User.create({ name, email, passwordHash, role });
     const token = signToken(user._id);
 
-    await logActivity(user._id, 'signup', 'User', { email });
+    await logActivity(user._id, 'signup', 'User', user._id);
 
     res.status(201).json({
       token,
@@ -45,16 +46,16 @@ export const login = async (req, res) => {
       return res.status(400).json({ message: 'Email and password are required' });
     }
 
-    const user = await User.findOne({ email }).populate('department', 'name');
+    const user = await User.findOne({ email }).populate('department', 'name code');
     if (!user || !(await user.comparePassword(password))) {
       return res.status(401).json({ message: 'Invalid credentials' });
     }
-    if (user.status === 'inactive') {
+    if (user.status === 'Inactive') {
       return res.status(401).json({ message: 'Account is inactive' });
     }
 
     const token = signToken(user._id);
-    await logActivity(user._id, 'login', 'User', { email });
+    await logActivity(user._id, 'login', 'User', user._id);
 
     res.json({
       token,

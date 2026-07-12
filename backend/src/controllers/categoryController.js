@@ -13,7 +13,7 @@ export const getCategories = async (req, res) => {
 export const createCategory = async (req, res) => {
   try {
     const category = await AssetCategory.create(req.body);
-    await logActivity(req.user._id, 'create_category', 'AssetCategory', { name: category.name });
+    await logActivity(req.user._id, 'create_category', 'AssetCategory', category._id);
     res.status(201).json(category);
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -27,7 +27,7 @@ export const updateCategory = async (req, res) => {
       runValidators: true,
     });
     if (!category) return res.status(404).json({ message: 'Category not found' });
-    await logActivity(req.user._id, 'update_category', 'AssetCategory', { id: category._id });
+    await logActivity(req.user._id, 'update_category', 'AssetCategory', category._id);
     res.json(category);
   } catch (err) {
     res.status(500).json({ message: err.message });

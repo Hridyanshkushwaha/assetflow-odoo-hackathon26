@@ -8,13 +8,13 @@ const hasOverlap = (start1, end1, start2, end2) => start1 < end2 && end1 > start
 export const getBookings = async (req, res) => {
   try {
     const filter = {};
-    if (req.query.assetId) filter.asset = req.query.assetId;
-    if (req.query.userId) filter.user = req.query.userId;
+    if (req.query.resourceId) filter.resource = req.query.resourceId;
+    if (req.query.userId) filter.bookedBy = req.query.userId;
     if (req.query.status) filter.status = req.query.status;
 
     const bookings = await Booking.find(filter)
-      .populate('asset', 'name assetTag location')
-      .populate('user', 'name email')
+      .populate('resource', 'name assetTag location')
+      .populate('bookedBy', 'name email')
       .sort({ startTime: 1 });
 
     res.json(bookings);
@@ -25,7 +25,7 @@ export const getBookings = async (req, res) => {
 
 export const createBooking = async (req, res) => {
   try {
-    const { assetId, startTime, endTime, notes } = req.body;
+    const { resourceId, startTime, endTime } = req.body;
     const start = new Date(startTime);
     const end = new Date(endTime);
 
@@ -33,14 +33,14 @@ export const createBooking = async (req, res) => {
       return res.status(400).json({ message: 'End time must be after start time' });
     }
 
-    const asset = await Asset.findById(assetId);
+    const asset = await Asset.findById(resourceId);
     if (!asset?.isBookable) {
-      return res.status(400).json({ message: 'Asset is not bookable' });
+      return res.status(400).json({ message: 'Resource is not bookable' });
     }
 
     const existing = await Booking.find({
-      asset: assetId,
-      status: { $in: ['upcoming', 'ongoing'] },
+      resource: resourceId,
+      status: { $in: ['Upcoming', 'Ongoing'] },
     });
 
     for (const b of existing) {
@@ -53,25 +53,24 @@ export const createBooking = async (req, res) => {
     }
 
     const booking = await Booking.create({
-      asset: assetId,
-      user: req.user._id,
+      resource: resourceId,
+      bookedBy: req.user._id,
       startTime: start,
       endTime: end,
-      notes,
+      status: 'Upcoming',
     });
 
     await createNotification(
       req.user._id,
       'booking_confirmed',
-      `Booking confirmed for ${asset.name} (${start.toLocaleString()} - ${end.toLocaleString()})`,
-      { entityType: 'Booking', entityId: booking._id }
+      `Booking confirmed for ${asset.name} (${start.toLocaleString()} - ${end.toLocaleString()})`
     );
 
-    await logActivity(req.user._id, 'create_booking', 'Booking', { assetId });
+    await logActivity(req.user._id, 'create_booking', 'Booking', booking._id);
 
     const populated = await Booking.findById(booking._id)
-      .populate('asset', 'name assetTag')
-      .populate('user', 'name');
+      .populate('resource', 'name assetTag')
+      .populate('bookedBy', 'name');
 
     res.status(201).json(populated);
   } catch (err) {
@@ -84,15 +83,10 @@ export const updateBooking = async (req, res) => {
     const booking = await Booking.findById(req.params.id);
     if (!booking) return res.status(404).json({ message: 'Booking not found' });
 
-    if (req.body.status === 'cancelled') {
-      booking.status = 'cancelled';
+    if (req.body.status === 'Cancelled') {
+      booking.status = 'Cancelled';
       await booking.save();
-      await createNotification(
-        booking.user,
-        'booking_cancelled',
-        'Your booking has been cancelled',
-        { entityType: 'Booking', entityId: booking._id }
-      );
+      await createNotification(booking.bookedBy, 'booking_cancelled', 'Your booking has been cancelled');
       return res.json(booking);
     }
 
@@ -100,8 +94,8 @@ export const updateBooking = async (req, res) => {
       const start = new Date(req.body.startTime);
       const end = new Date(req.body.endTime);
       const existing = await Booking.find({
-        asset: booking.asset,
-        status: { $in: ['upcoming', 'ongoing'] },
+        resource: booking.resource,
+        status: { $in: ['Upcoming', 'Ongoing'] },
         _id: { $ne: booking._id },
       });
 
@@ -121,12 +115,14 @@ export const updateBooking = async (req, res) => {
   }
 };
 
-export const getAssetCalendar = async (req, res) => {
+export const getResourceCalendar = async (req, res) => {
   try {
     const bookings = await Booking.find({
-      asset: req.params.assetId,
-      status: { $ne: 'cancelled' },
-    }).populate('user', 'name').sort({ startTime: 1 });
+      resource: req.params.resourceId,
+      status: { $ne: 'Cancelled' },
+    })
+      .populate('bookedBy', 'name')
+      .sort({ startTime: 1 });
     res.json(bookings);
   } catch (err) {
     res.status(500).json({ message: err.message });

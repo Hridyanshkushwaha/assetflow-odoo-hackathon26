@@ -6,7 +6,7 @@ const router = Router();
 
 router.use(protect);
 router.get('/', getCategories);
-router.post('/', authorize('admin'), createCategory);
-router.put('/:id', authorize('admin'), updateCategory);
+router.post('/', authorize('Admin'), createCategory);
+router.put('/:id', authorize('Admin'), updateCategory);
 
 export default router;

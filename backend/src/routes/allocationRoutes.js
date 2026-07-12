@@ -13,10 +13,10 @@ const router = Router();
 
 router.use(protect);
 router.get('/', getAllocations);
-router.post('/', authorize('admin', 'asset_manager', 'department_head'), allocateAsset);
-router.put('/:id/return', authorize('admin', 'asset_manager'), returnAsset);
+router.post('/', authorize('Admin', 'AssetManager', 'DepartmentHead'), allocateAsset);
+router.put('/:id/return', authorize('Admin', 'AssetManager'), returnAsset);
 router.post('/transfer', requestTransfer);
 router.get('/transfers/all', getTransferRequests);
-router.put('/transfers/:id', authorize('admin', 'asset_manager', 'department_head'), approveTransfer);
+router.put('/transfers/:id', authorize('Admin', 'AssetManager', 'DepartmentHead'), approveTransfer);
 
 export default router;

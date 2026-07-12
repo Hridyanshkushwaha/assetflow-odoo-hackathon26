@@ -1,5 +1,6 @@
 import { NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { ROLES } from '../utils/roles';
 
 const navItems = [
   { to: '/', label: 'Dashboard', icon: '📊' },
@@ -10,7 +11,7 @@ const navItems = [
   { to: '/audits', label: 'Audits', icon: '✅' },
   { to: '/reports', label: 'Reports', icon: '📈' },
   { to: '/notifications', label: 'Notifications', icon: '🔔' },
-  { to: '/organization', label: 'Organization', icon: '🏢', roles: ['admin'] },
+  { to: '/organization', label: 'Organization', icon: '🏢', roles: [ROLES.ADMIN] },
 ];
 
 export default function Sidebar() {
@@ -56,7 +57,7 @@ export default function Sidebar() {
       <div className="border-t border-slate-200 p-4">
         <div className="mb-3 rounded-lg bg-slate-50 p-3">
           <p className="text-sm font-medium text-slate-900">{user?.name}</p>
-          <p className="text-xs text-slate-500 capitalize">{user?.role?.replace(/_/g, ' ')}</p>
+          <p className="text-xs text-slate-500">{user?.role?.replace(/([A-Z])/g, ' $1').trim()}</p>
         </div>
         <button
           onClick={handleLogout}

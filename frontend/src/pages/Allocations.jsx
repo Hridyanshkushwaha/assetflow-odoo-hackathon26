@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import api from '../services/api';
 import { useAuth } from '../context/AuthContext';
+import { canAllocate } from '../utils/roles';
 import StatusBadge from '../components/StatusBadge';
 import LoadingSpinner from '../components/LoadingSpinner';
 
@@ -14,22 +15,20 @@ export default function Allocations() {
   const [form, setForm] = useState({ assetId: '', allocatedTo: '', expectedReturnDate: '' });
   const [error, setError] = useState('');
 
-  const canAllocate = ['admin', 'asset_manager', 'department_head'].includes(user?.role);
-
   const load = async () => {
     setLoading(true);
     try {
       const [a, t, assetsRes] = await Promise.all([
         api.get('/allocations'),
         api.get('/allocations/transfers/all'),
-        api.get('/assets', { params: { status: 'available' } }),
+        api.get('/assets', { params: { status: 'Available' } }),
       ]);
       setAllocations(a.data);
       setTransfers(t.data);
       setAssets(assetsRes.data);
-      if (['admin', 'asset_manager', 'department_head'].includes(user?.role)) {
+      if (canAllocate(user?.role)) {
         const e = await api.get('/employees');
-        setEmployees(e.data.filter((emp) => emp.status === 'active'));
+        setEmployees(e.data.filter((emp) => emp.status === 'Active'));
       }
     } catch (err) {
       console.error(err);
@@ -44,7 +43,7 @@ export default function Allocations() {
     e.preventDefault();
     setError('');
     try {
-      await api.post('/allocations', form);
+      await api.post('/allocations', { ...form, allocatedToType: 'User' });
       setForm({ assetId: '', allocatedTo: '', expectedReturnDate: '' });
       load();
     } catch (err) {
@@ -58,7 +57,7 @@ export default function Allocations() {
   };
 
   const handleReturn = async (id) => {
-    await api.put(`/allocations/${id}/return`, { returnNotes: 'Returned in good condition' });
+    await api.put(`/allocations/${id}/return`, { conditionCheckInNotes: 'Returned in good condition' });
     load();
   };
 
@@ -74,7 +73,7 @@ export default function Allocations() {
       <h1 className="mb-2 text-2xl font-bold">Asset Allocation & Transfer</h1>
       <p className="mb-6 text-slate-500">Manage who holds what across the organization</p>
 
-      {canAllocate && (
+      {canAllocate(user?.role) && (
         <form onSubmit={handleAllocate} className="mb-6 rounded-xl border bg-white p-6">
           <h2 className="mb-4 font-semibold">Allocate Asset</h2>
           {error && <div className="mb-3 rounded-lg bg-red-50 p-3 text-sm text-red-700">{error}</div>}
@@ -95,63 +94,55 @@ export default function Allocations() {
 
       <div className="mb-8 rounded-xl border bg-white p-6">
         <h2 className="mb-4 font-semibold">Active Allocations</h2>
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm">
-            <thead>
-              <tr className="border-b text-slate-500">
-                <th className="pb-3 pr-4">Asset</th>
-                <th className="pb-3 pr-4">Holder</th>
-                <th className="pb-3 pr-4">Expected Return</th>
-                <th className="pb-3 pr-4">Status</th>
-                <th className="pb-3">Actions</th>
+        <table className="w-full text-left text-sm">
+          <thead>
+            <tr className="border-b text-slate-500">
+              <th className="pb-3 pr-4">Asset</th>
+              <th className="pb-3 pr-4">Holder</th>
+              <th className="pb-3 pr-4">Expected Return</th>
+              <th className="pb-3 pr-4">Status</th>
+              <th className="pb-3">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {allocations.filter((a) => a.status !== 'Returned').map((a) => (
+              <tr key={a._id} className="border-b border-slate-100">
+                <td className="py-3 pr-4 font-mono">{a.asset?.assetTag}</td>
+                <td className="py-3 pr-4">{a.holder?.name || '—'}</td>
+                <td className="py-3 pr-4">{a.expectedReturnDate ? new Date(a.expectedReturnDate).toLocaleDateString() : '—'}</td>
+                <td className="py-3 pr-4"><StatusBadge status={a.status} /></td>
+                <td className="py-3">
+                  {canAllocate(user?.role) && (
+                    <button onClick={() => handleReturn(a._id)} className="text-xs text-primary-600 hover:underline">Mark Returned</button>
+                  )}
+                </td>
               </tr>
-            </thead>
-            <tbody>
-              {allocations.filter((a) => a.status !== 'returned').map((a) => (
-                <tr key={a._id} className="border-b border-slate-100">
-                  <td className="py-3 pr-4 font-mono">{a.asset?.assetTag}</td>
-                  <td className="py-3 pr-4">{a.allocatedTo?.name || '—'}</td>
-                  <td className="py-3 pr-4">{a.expectedReturnDate ? new Date(a.expectedReturnDate).toLocaleDateString() : '—'}</td>
-                  <td className="py-3 pr-4"><StatusBadge status={a.status} /></td>
-                  <td className="py-3">
-                    {canAllocate && a.status !== 'returned' && (
-                      <button onClick={() => handleReturn(a._id)} className="text-xs text-primary-600 hover:underline">
-                        Mark Returned
-                      </button>
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+            ))}
+          </tbody>
+        </table>
       </div>
 
       <div className="rounded-xl border bg-white p-6">
         <h2 className="mb-4 font-semibold">Transfer Requests</h2>
-        {transfers.length === 0 ? (
-          <p className="text-sm text-slate-500">No transfer requests</p>
-        ) : (
-          <ul className="space-y-3">
-            {transfers.map((t) => (
-              <li key={t._id} className="flex items-center justify-between rounded-lg bg-slate-50 p-4">
-                <div>
-                  <p className="font-medium">{t.asset?.assetTag} → {t.toUser?.name || 'Department'}</p>
-                  <p className="text-sm text-slate-500">Requested by {t.requestedBy?.name}</p>
-                </div>
-                <div className="flex items-center gap-2">
-                  <StatusBadge status={t.status} />
-                  {t.status === 'requested' && canAllocate && (
-                    <>
-                      <button onClick={() => handleTransferAction(t._id, 'approve')} className="rounded bg-green-600 px-2 py-1 text-xs text-white">Approve</button>
-                      <button onClick={() => handleTransferAction(t._id, 'reject')} className="rounded bg-red-600 px-2 py-1 text-xs text-white">Reject</button>
-                    </>
-                  )}
-                </div>
-              </li>
-            ))}
-          </ul>
-        )}
+        <ul className="space-y-3">
+          {transfers.map((t) => (
+            <li key={t._id} className="flex items-center justify-between rounded-lg bg-slate-50 p-4">
+              <div>
+                <p className="font-medium">{t.asset?.assetTag} transfer request</p>
+                <p className="text-sm text-slate-500">Requested by {t.requestedBy?.name}</p>
+              </div>
+              <div className="flex items-center gap-2">
+                <StatusBadge status={t.status} />
+                {t.status === 'Requested' && canAllocate(user?.role) && (
+                  <>
+                    <button onClick={() => handleTransferAction(t._id, 'approve')} className="rounded bg-green-600 px-2 py-1 text-xs text-white">Approve</button>
+                    <button onClick={() => handleTransferAction(t._id, 'reject')} className="rounded bg-red-600 px-2 py-1 text-xs text-white">Reject</button>
+                  </>
+                )}
+              </div>
+            </li>
+          ))}
+        </ul>
       </div>
     </div>
   );

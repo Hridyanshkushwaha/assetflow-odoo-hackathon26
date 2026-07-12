@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import api from '../services/api';
 import { useAuth } from '../context/AuthContext';
+import { canApproveMaintenance } from '../utils/roles';
 import LoadingSpinner from '../components/LoadingSpinner';
 
 export default function Notifications() {
@@ -15,7 +16,7 @@ export default function Notifications() {
     try {
       const n = await api.get('/notifications');
       setNotifications(n.data);
-      if (['admin', 'asset_manager'].includes(user?.role)) {
+      if (canApproveMaintenance(user?.role)) {
         const l = await api.get('/notifications/activity-logs');
         setLogs(l.data);
       }
@@ -40,7 +41,7 @@ export default function Notifications() {
 
   if (loading) return <LoadingSpinner />;
 
-  const unread = notifications.filter((n) => !n.read).length;
+  const unread = notifications.filter((n) => !n.isRead).length;
 
   return (
     <div>
@@ -50,24 +51,16 @@ export default function Notifications() {
           <p className="text-slate-500">{unread} unread notifications</p>
         </div>
         {unread > 0 && (
-          <button onClick={markAllRead} className="rounded-lg border px-4 py-2 text-sm hover:bg-slate-50">
-            Mark all read
-          </button>
+          <button onClick={markAllRead} className="rounded-lg border px-4 py-2 text-sm hover:bg-slate-50">Mark all read</button>
         )}
       </div>
 
       <div className="mb-4 flex gap-2 border-b">
-        <button
-          onClick={() => setTab('notifications')}
-          className={`px-4 py-2 text-sm font-medium ${tab === 'notifications' ? 'border-b-2 border-primary-600 text-primary-600' : 'text-slate-500'}`}
-        >
+        <button onClick={() => setTab('notifications')} className={`px-4 py-2 text-sm font-medium ${tab === 'notifications' ? 'border-b-2 border-primary-600 text-primary-600' : 'text-slate-500'}`}>
           Notifications
         </button>
-        {['admin', 'asset_manager'].includes(user?.role) && (
-          <button
-            onClick={() => setTab('logs')}
-            className={`px-4 py-2 text-sm font-medium ${tab === 'logs' ? 'border-b-2 border-primary-600 text-primary-600' : 'text-slate-500'}`}
-          >
+        {canApproveMaintenance(user?.role) && (
+          <button onClick={() => setTab('logs')} className={`px-4 py-2 text-sm font-medium ${tab === 'logs' ? 'border-b-2 border-primary-600 text-primary-600' : 'text-slate-500'}`}>
             Activity Logs
           </button>
         )}
@@ -75,29 +68,20 @@ export default function Notifications() {
 
       {tab === 'notifications' && (
         <div className="rounded-xl border bg-white">
-          {notifications.length === 0 ? (
-            <p className="p-8 text-center text-slate-500">No notifications</p>
-          ) : (
-            <ul>
-              {notifications.map((n) => (
-                <li
-                  key={n._id}
-                  className={`flex items-start justify-between border-b border-slate-100 p-4 ${!n.read ? 'bg-primary-50' : ''}`}
-                >
-                  <div>
-                    <p className="text-sm font-medium capitalize">{n.type?.replace(/_/g, ' ')}</p>
-                    <p className="text-sm text-slate-600">{n.message}</p>
-                    <p className="mt-1 text-xs text-slate-400">{new Date(n.createdAt).toLocaleString()}</p>
-                  </div>
-                  {!n.read && (
-                    <button onClick={() => markRead(n._id)} className="text-xs text-primary-600 hover:underline">
-                      Mark read
-                    </button>
-                  )}
-                </li>
-              ))}
-            </ul>
-          )}
+          <ul>
+            {notifications.map((n) => (
+              <li key={n._id} className={`flex items-start justify-between border-b border-slate-100 p-4 ${!n.isRead ? 'bg-primary-50' : ''}`}>
+                <div>
+                  <p className="text-sm font-medium">{n.type?.replace(/_/g, ' ')}</p>
+                  <p className="text-sm text-slate-600">{n.message}</p>
+                  <p className="mt-1 text-xs text-slate-400">{new Date(n.createdAt).toLocaleString()}</p>
+                </div>
+                {!n.isRead && (
+                  <button onClick={() => markRead(n._id)} className="text-xs text-primary-600 hover:underline">Mark read</button>
+                )}
+              </li>
+            ))}
+          </ul>
         </div>
       )}
 
@@ -108,7 +92,7 @@ export default function Notifications() {
               <tr className="border-b bg-slate-50 text-slate-500">
                 <th className="p-4">User</th>
                 <th className="p-4">Action</th>
-                <th className="p-4">Entity</th>
+                <th className="p-4">Entity Type</th>
                 <th className="p-4">Time</th>
               </tr>
             </thead>
@@ -116,9 +100,9 @@ export default function Notifications() {
               {logs.map((l) => (
                 <tr key={l._id} className="border-b border-slate-100">
                   <td className="p-4">{l.user?.name} <span className="text-slate-400">({l.user?.role})</span></td>
-                  <td className="p-4 capitalize">{l.action?.replace(/_/g, ' ')}</td>
-                  <td className="p-4">{l.entity}</td>
-                  <td className="p-4 text-slate-500">{new Date(l.createdAt).toLocaleString()}</td>
+                  <td className="p-4">{l.action?.replace(/_/g, ' ')}</td>
+                  <td className="p-4">{l.entityType}</td>
+                  <td className="p-4 text-slate-500">{new Date(l.timestamp).toLocaleString()}</td>
                 </tr>
               ))}
             </tbody>

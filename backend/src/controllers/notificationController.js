@@ -16,7 +16,7 @@ export const markNotificationRead = async (req, res) => {
   try {
     const notification = await Notification.findOneAndUpdate(
       { _id: req.params.id, user: req.user._id },
-      { read: true },
+      { isRead: true },
       { new: true }
     );
     if (!notification) return res.status(404).json({ message: 'Notification not found' });
@@ -28,7 +28,7 @@ export const markNotificationRead = async (req, res) => {
 
 export const markAllRead = async (req, res) => {
   try {
-    await Notification.updateMany({ user: req.user._id, read: false }, { read: true });
+    await Notification.updateMany({ user: req.user._id, isRead: false }, { isRead: true });
     res.json({ message: 'All notifications marked as read' });
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -39,7 +39,7 @@ export const getActivityLogs = async (req, res) => {
   try {
     const logs = await ActivityLog.find()
       .populate('user', 'name email role')
-      .sort({ createdAt: -1 })
+      .sort({ timestamp: -1 })
       .limit(100);
     res.json(logs);
   } catch (err) {

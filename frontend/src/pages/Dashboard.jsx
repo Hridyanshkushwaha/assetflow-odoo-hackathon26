@@ -72,7 +72,7 @@ export default function Dashboard() {
                 <li key={a._id} className="flex items-center justify-between rounded-lg bg-red-50 p-3">
                   <div>
                     <p className="font-medium">{a.asset?.assetTag} — {a.asset?.name}</p>
-                    <p className="text-sm text-slate-500">Held by {a.allocatedTo?.name}</p>
+                    <p className="text-sm text-slate-500">Held by {a.holder?.name}</p>
                   </div>
                 </li>
               ))}
@@ -91,7 +91,7 @@ export default function Dashboard() {
                   <div>
                     <p className="font-medium">{a.asset?.assetTag} — {a.asset?.name}</p>
                     <p className="text-sm text-slate-500">
-                      {a.allocatedTo?.name} · Due {new Date(a.expectedReturnDate).toLocaleDateString()}
+                      {a.holder?.name} · Due {new Date(a.expectedReturnDate).toLocaleDateString()}
                     </p>
                   </div>
                 </li>

@@ -23,26 +23,36 @@ export const getDashboard = async (req, res) => {
       upcomingReturns,
       overdueReturns,
     ] = await Promise.all([
-      Asset.countDocuments({ status: 'available' }),
-      Asset.countDocuments({ status: 'allocated' }),
+      Asset.countDocuments({ status: 'Available' }),
+      Asset.countDocuments({ status: 'Allocated' }),
       MaintenanceRequest.countDocuments({
         createdAt: { $gte: today, $lt: tomorrow },
-        status: { $ne: 'resolved' },
+        status: { $ne: 'Resolved' },
       }),
-      Booking.countDocuments({ status: { $in: ['upcoming', 'ongoing'] } }),
-      TransferRequest.countDocuments({ status: 'requested' }),
+      Booking.countDocuments({ status: { $in: ['Upcoming', 'Ongoing'] } }),
+      TransferRequest.countDocuments({ status: 'Requested' }),
       Allocation.find({
-        status: 'active',
+        status: 'Active',
         expectedReturnDate: { $gte: today },
       })
         .populate('asset', 'name assetTag')
-        .populate('allocatedTo', 'name')
         .limit(10),
-      Allocation.find({ status: 'overdue' })
+      Allocation.find({ status: 'Overdue' })
         .populate('asset', 'name assetTag')
-        .populate('allocatedTo', 'name')
         .limit(10),
     ]);
+
+    const enrichAllocations = async (allocs) =>
+      Promise.all(
+        allocs.map(async (a) => {
+          const obj = a.toObject();
+          if (a.allocatedToType === 'User') {
+            const User = (await import('../models/User.js')).default;
+            obj.holder = await User.findById(a.allocatedTo).select('name');
+          }
+          return obj;
+        })
+      );
 
     res.json({
       kpis: {
@@ -53,8 +63,8 @@ export const getDashboard = async (req, res) => {
         pendingTransfers,
         upcomingReturnsCount: upcomingReturns.length,
       },
-      upcomingReturns,
-      overdueReturns,
+      upcomingReturns: await enrichAllocations(upcomingReturns),
+      overdueReturns: await enrichAllocations(overdueReturns),
     });
   } catch (err) {
     res.status(500).json({ message: err.message });

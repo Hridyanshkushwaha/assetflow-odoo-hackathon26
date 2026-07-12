@@ -14,8 +14,8 @@ export const getReports = async (req, res) => {
           { $group: { _id: '$cat.name', count: { $sum: 1 } } },
         ]),
         Allocation.aggregate([
-          { $match: { status: { $in: ['active', 'overdue'] } } },
-          { $lookup: { from: 'departments', localField: 'allocatedToDepartment', foreignField: '_id', as: 'dept' } },
+          { $match: { status: { $in: ['Active', 'Overdue'] }, allocatedToType: 'Department' } },
+          { $lookup: { from: 'departments', localField: 'allocatedTo', foreignField: '_id', as: 'dept' } },
           { $unwind: { path: '$dept', preserveNullAndEmptyArrays: true } },
           { $group: { _id: '$dept.name', count: { $sum: 1 } } },
         ]),
@@ -26,11 +26,11 @@ export const getReports = async (req, res) => {
           { $unwind: '$cat' },
           { $group: { _id: '$cat.name', count: { $sum: 1 } } },
         ]),
-        Asset.find({ status: 'available', updatedAt: { $lt: new Date(Date.now() - 90 * 24 * 60 * 60 * 1000) } })
+        Asset.find({ status: 'Available', updatedAt: { $lt: new Date(Date.now() - 90 * 24 * 60 * 60 * 1000) } })
           .populate('category', 'name')
           .limit(20),
         Booking.aggregate([
-          { $match: { status: { $ne: 'cancelled' } } },
+          { $match: { status: { $ne: 'Cancelled' } } },
           { $project: { hour: { $hour: '$startTime' } } },
           { $group: { _id: '$hour', count: { $sum: 1 } } },
           { $sort: { _id: 1 } },
