@@ -1,4 +1,4 @@
-# AssetFlow
+# AssetFlow - Odoo Hackathon 2026 PS-01
 
 **Enterprise Asset & Resource Management System**
 
